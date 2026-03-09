@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>CL Circular | Dashboard Pesquero</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link rel="stylesheet" href="./styles.css?v=20260306d" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" defer></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" defer></script>
+    <script src="./app.js?v=cluster_kmeans_20260306c" defer></script>
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-1"></div>
+    <div class="bg-shape bg-shape-2"></div>
+
+    <main class="app-shell">
+      <header class="app-header">
+        <img src="./download.png" alt="Logo CL Circular" class="brand-logo" />
+        <h1 class="main-title">Mercado de Pescados y Mariscos</h1>
+      </header>
+
+      <section class="tabs">
+        <div class="tabs-left">
+          <button class="tab-button is-active" data-tab="kpis">Mercado</button>
+          <button class="tab-button" data-tab="propuesta">Estrategia de entrada</button>
+          <button class="tab-button" data-tab="empresas">Prospectos</button>
+          <button class="tab-button" data-tab="riesgos">Diagnóstico</button>
+        </div>
+        <div class="tabs-actions header-tools">
+          <a class="site-btn" href="https://www.clcircular.com/es/" target="_blank" rel="noopener noreferrer">Ir a sitio oficial</a>
+          <label class="upload-btn" for="xlsxInput">Cargar XLSX manual</label>
+          <button class="tab-button tab-button-secondary" data-tab="clustering" type="button">Análisis Interno BI</button>
+          <input id="xlsxInput" type="file" accept=".xlsx" hidden />
+        </div>
+      </section>
+
+      <section class="tab-content is-active" id="tab-kpis">
+        <div class="kpi-toolbar">
+          <label class="filter-wrap">
+            <span>Filtrar KPIs por estado</span>
+            <select id="filtroEstadoKpi"></select>
+          </label>
+          <label class="filter-wrap">
+            <span>Filtrar KPIs por año</span>
+            <select id="filtroAnioKpi"></select>
+          </label>
+        </div>
+        <div class="card-grid" id="kpiCards"></div>
+
+        <div class="kpi-forecast-grid">
+          <article class="panel kpi-forecast-main">
+            <div class="panel-title-wrap">
+              <h3>Exportaciones FOB de pescados y mariscos (México)</h3>
+            </div>
+            <div class="serie-scenario-controls" id="serieScenarioControls">
+              <button class="competidor-btn serie-scenario-btn is-active" type="button" data-serie-scenario="base">
+                Base
+              </button>
+              <button class="competidor-btn serie-scenario-btn" type="button" data-serie-scenario="pesimista">
+                Pesimista
+              </button>
+              <button class="competidor-btn serie-scenario-btn" type="button" data-serie-scenario="optimista">
+                Optimista
+              </button>
+            </div>
+            <div id="chartSerieFobPlot" class="serie-plot"></div>
+            <p id="chartSerieFobNotice" class="chart-notice"></p>
+          </article>
+          <article class="panel serie-insights-panel kpi-forecast-insights">
+            <div class="panel-title-wrap">
+              <h3>Insights del Forecast</h3>
+            </div>
+            <div id="serieInsightsContent" class="serie-insights-content"></div>
+          </article>
+        </div>
+
+        <article class="panel competidores-panel">
+          <div class="panel-title-wrap">
+            <h3>Panorama competitivo</h3>
+            <p>Competidores identificados en el mercado mexicano de monitoreo de cadena de frío.</p>
+          </div>
+          <div class="competidores-grid" id="competidoresGrid"></div>
+          <div id="competidoresMap" class="infra-cruces-map competidores-map"></div>
+        </article>
+
+      </section>
+
+      <section class="tab-content" id="tab-propuesta">
+        <article class="panel propuesta-section propuesta-hero">
+          <h2 class="propuesta-hero-title">La oportunidad</h2>
+          <div class="propuesta-hero-metrics">
+            <div class="propuesta-hero-metric">
+              <div id="propuestaHeroFobValue" class="propuesta-hero-value">$776M USD</div>
+              <div class="propuesta-hero-label">FOB exportado</div>
+            </div>
+            <div class="propuesta-hero-metric">
+              <div id="propuestaHeroFtlValue" class="propuesta-hero-value">10,500 FTL</div>
+              <div class="propuesta-hero-label">terrestres/año</div>
+            </div>
+            <div class="propuesta-hero-metric">
+              <div class="propuesta-hero-value">FSMA 2026</div>
+              <div class="propuesta-hero-label">en vigor</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel propuesta-section propuesta-prospects">
+          <h3 class="propuesta-section-title">Los 5 prospectos prioritarios</h3>
+          <div class="propuesta-prospect-list propuesta-prospect-list-ancla">
+            <article class="propuesta-prospect-card propuesta-q2">
+              <div class="propuesta-prospect-bar"></div>
+              <div class="propuesta-prospect-main">
+                <div class="propuesta-prospect-head">
+                  <strong>Grupo Pinsa</strong>
+                  <span class="propuesta-profile-badge">Ancla</span>
+                </div>
+                <div class="propuesta-prospect-meta">60-80 FTL/mes · Mazatlán, Sinaloa</div>
+                <div class="propuesta-prospect-actions">
+                  <button class="propuesta-prospect-btn" type="button" data-prospect-company="Grupo Pinsa">
+                    Ver perfil
+                  </button>
+                </div>
+              </div>
+              <div class="propuesta-prospect-quarter">Q2 2026</div>
+            </article>
+
+            <article class="propuesta-prospect-card propuesta-q2">
+              <div class="propuesta-prospect-bar"></div>
+              <div class="propuesta-prospect-main">
+                <div class="propuesta-prospect-head">
+                  <strong>GAM</strong>
+                  <span class="propuesta-profile-badge">Ancla</span>
+                </div>
+                <div class="propuesta-prospect-meta">50-70 FTL/mes · Mazatlán, Sinaloa</div>
+                <div class="propuesta-prospect-actions">
+                  <button
+                    class="propuesta-prospect-btn"
+                    type="button"
+                    data-prospect-company="Grupo Acuícola Mexicano (GAM)"
+                  >
+                    Ver perfil
+                  </button>
+                </div>
+              </div>
+              <div class="propuesta-prospect-quarter">Q2 2026</div>
+            </article>
+          </div>
+
+          <div class="propuesta-prospect-list propuesta-prospect-list-estrategico">
+            <article class="propuesta-prospect-card propuesta-q3">
+              <div class="propuesta-prospect-bar"></div>
+              <div class="propuesta-prospect-main">
+                <div class="propuesta-prospect-head">
+                  <strong>Baja Aqua-Farms</strong>
+                  <span class="propuesta-profile-badge">Estratégico</span>
+                </div>
+                <div class="propuesta-prospect-meta">50 FTL/mes · Ensenada, BC</div>
+                <div class="propuesta-prospect-actions">
+                  <button class="propuesta-prospect-btn" type="button" data-prospect-company="Baja Aqua-Farms">
+                    Ver perfil
+                  </button>
+                </div>
+              </div>
+              <div class="propuesta-prospect-quarter">Q3 2026</div>
+            </article>
+
+            <article class="propuesta-prospect-card propuesta-q3">
+              <div class="propuesta-prospect-bar"></div>
+              <div class="propuesta-prospect-main">
+                <div class="propuesta-prospect-head">
+                  <strong>Pacífico Aquaculture</strong>
+                  <span class="propuesta-profile-badge">Estratégico</span>
+                </div>
+                <div class="propuesta-prospect-meta">50 FTL/mes · Ensenada, BC</div>
+                <div class="propuesta-prospect-actions">
+                  <button
+                    class="propuesta-prospect-btn"
+                    type="button"
+                    data-prospect-company="Pacífico Aquaculture"
+                  >
+                    Ver perfil
+                  </button>
+                </div>
+              </div>
+              <div class="propuesta-prospect-quarter">Q3 2026</div>
+            </article>
+
+            <article class="propuesta-prospect-card propuesta-q3">
+              <div class="propuesta-prospect-bar"></div>
+              <div class="propuesta-prospect-main">
+                <div class="propuesta-prospect-head">
+                  <strong>Baja Shellfish Farms</strong>
+                  <span class="propuesta-profile-badge">Estratégico</span>
+                </div>
+                <div class="propuesta-prospect-meta">30-50 FTL/mes · Ensenada, BC</div>
+                <div class="propuesta-prospect-actions">
+                  <button
+                    class="propuesta-prospect-btn"
+                    type="button"
+                    data-prospect-company="Baja Shellfish Farms"
+                  >
+                    Ver perfil
+                  </button>
+                </div>
+              </div>
+              <div class="propuesta-prospect-quarter">Q4 2026</div>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel propuesta-section propuesta-coverage">
+          <h3 class="propuesta-section-title">Cobertura geográfica — Corredor Pacífico</h3>
+          <div id="propuestaCoverageMap" class="clientes-map propuesta-coverage-map"></div>
+        </article>
+
+        <article class="panel propuesta-section propuesta-secuencia propuesta-plan">
+          <h3 class="propuesta-section-title">Plan de ejecución</h3>
+          <div class="propuesta-timeline propuesta-plan-grid">
+            <article class="propuesta-timeline-step propuesta-plan-column">
+              <div class="propuesta-implementation-badge">Q2 2026 · mayo-junio</div>
+              <h4>Cluster Ancla</h4>
+              <p class="propuesta-plan-companies">Grupo Pinsa + GAM</p>
+              <hr class="propuesta-plan-separator" />
+              <div class="propuesta-plan-content">
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Entrada al mercado</h4>
+                  <p>GAM primero, Pinsa en paralelo. Mismo corredor Nogales.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Conversión comercial</h4>
+                  <p>Datos GAM como evidencia para cerrar Pinsa. Recuperación fiscal SAT 65%.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Adopción rápida</h4>
+                  <p>Sensores desde España. Sin costo inicial ni configuración.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Estrategia de marketing</h4>
+                  <p>'No configures nada — el chip llega listo para activar.'</p>
+                </div>
+              </div>
+              <p class="propuesta-plan-kpi">130 FTL/mes combinados · Nogales</p>
+            </article>
+            <article class="propuesta-timeline-step propuesta-plan-column">
+              <div class="propuesta-implementation-badge">Q3 2026 · julio-septiembre</div>
+              <h4>Cluster Estratégico</h4>
+              <p class="propuesta-plan-companies">Baja Aqua-Farms + Pacífico Aquaculture</p>
+              <hr class="propuesta-plan-separator" />
+              <div class="propuesta-plan-content">
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Escalamiento comercial</h4>
+                  <p>Evidencia del piloto GAM/Pinsa para cerrar Ensenada · Otay Mesa.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Argumento de riesgo</h4>
+                  <p>Atún sashimi y lobina rayada. Un rechazo FDA cuesta más que un año del servicio.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Modelo SaaS</h4>
+                  <p>Pago por viaje monitoreado. Sin compra de hardware.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Estrategia de marketing</h4>
+                  <p>ROI verificable: ~$80K USD en producto perdido vs. costo anual del servicio.</p>
+                </div>
+              </div>
+              <p class="propuesta-plan-kpi">100 FTL/mes combinados · Otay Mesa</p>
+            </article>
+            <article class="propuesta-timeline-step propuesta-plan-column">
+              <div class="propuesta-implementation-badge">Q4 2026 · octubre-diciembre</div>
+              <h4>Cluster Estratégico</h4>
+              <p class="propuesta-plan-companies">Baja Shellfish Farms</p>
+              <hr class="propuesta-plan-separator" />
+              <div class="propuesta-plan-content">
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Cobertura Pacífico</h4>
+                  <p>Ostión, almeja y mejillón. Cruces diarios Otay Mesa-San Diego.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Impulsor regulatorio</h4>
+                  <p>FSMA 204 exige documentación térmica verificable para exportar.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Escala largo plazo</h4>
+                  <p>Alianzas 3PL (DHL/FedEx) como add-on en envíos perecederos.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Estrategia de marketing</h4>
+                  <p>Cada chip recuperado: -50 g e-waste, -200 g CO₂.</p>
+                </div>
+              </div>
+              <p class="propuesta-plan-kpi">30-50 FTL/mes · Otay Mesa</p>
+            </article>
+          </div>
+        </article>
+
+        <article class="panel propuesta-section propuesta-viabilidad">
+          <h3 class="propuesta-section-title">Viabilidad del modelo</h3>
+          <div class="propuesta-viabilidad-grid">
+            <article class="propuesta-viabilidad-kpi">
+              <div class="propuesta-viabilidad-value">&nbsp;</div>
+              <div class="propuesta-viabilidad-label">&nbsp;</div>
+            </article>
+            <article class="propuesta-viabilidad-kpi">
+              <div class="propuesta-viabilidad-value">&nbsp;</div>
+              <div class="propuesta-viabilidad-label">&nbsp;</div>
+            </article>
+            <article class="propuesta-viabilidad-kpi">
+              <div class="propuesta-viabilidad-value">&nbsp;</div>
+              <div class="propuesta-viabilidad-label">&nbsp;</div>
+            </article>
+          </div>
+        </article>
+
+      </section>
+
+      <section class="tab-content" id="tab-empresas">
+        <article class="panel">
+          <div class="panel-title-wrap">
+            <h3>Clientes potenciales: exportadores e importadores en México</h3>
+          </div>
+          <div id="clientesMap" class="clientes-map"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title-wrap">
+            <h3>Listado de clientes potenciales</h3>
+          </div>
+          <div class="table-wrap clientes-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Producto</th>
+                  <th>Certificaciones</th>
+                  <th>Temperatura</th>
+                  <th>Volumen</th>
+                  <th>Aduana de Cruce</th>
+                  <th>Contacto</th>
+                </tr>
+              </thead>
+              <tbody id="clientesTablaBody"></tbody>
+            </table>
+          </div>
+          <div class="clientes-actions">
+            <button id="clientesShowMoreBtn" class="show-more-btn" type="button">Mostrar más</button>
+          </div>
+        </article>
+
+      </section>
+
+      <section class="tab-content" id="tab-riesgos">
+        <article class="panel infra-kpi">
+          <div class="panel-title-wrap">
+            <h3>Infraestructura logística clave en México</h3>
+          </div>
+          <div class="infra-grid">
+            <div class="infra-box">
+              <label for="infraNodoSelect">Selecciona aduana</label>
+              <select id="infraNodoSelect"></select>
+              <div id="infraNodoSummary" class="infra-nodo-summary"></div>
+              <div id="infraNodoPitch" class="infra-pitch-card"></div>
+            </div>
+            <div class="infra-box">
+              <div id="infraCrucesMap" class="infra-cruces-map"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="riesgos-header">
+            <div class="panel-title-wrap">
+              <h3>Riesgos operativos y climáticos</h3>
+            </div>
+          </div>
+          <div class="riesgos-filtros">
+            <label class="filter-wrap riesgos-select">
+              <span>Empresa</span>
+              <select id="riesgoEmpresaSelect"></select>
+              <div class="riesgo-empresa-actions">
+                <button id="riesgoVerUbicacionBtn" class="competidor-btn" type="button" aria-expanded="false">
+                  Ver ubicación
+                </button>
+                <button id="riesgoVerProductosBtn" class="competidor-btn" type="button" aria-expanded="false">
+                  Ver productos
+                </button>
+                <button id="riesgoVerCertificacionesBtn" class="competidor-btn" type="button" aria-expanded="false">
+                  Ver certificaciones
+                </button>
+                <button id="riesgoVerAduanaBtn" class="competidor-btn" type="button" aria-expanded="false">
+                  Ver aduana cruce
+                </button>
+              </div>
+              <div class="riesgo-empresa-detalles">
+                <div id="riesgoUbicacionInfo" class="competidor-propuesta riesgo-empresa-detalle" hidden></div>
+                <div id="riesgoProductosInfo" class="competidor-propuesta riesgo-empresa-detalle" hidden></div>
+                <div id="riesgoCertificacionesInfo" class="competidor-propuesta riesgo-empresa-detalle" hidden></div>
+                <div id="riesgoAduanaInfo" class="competidor-propuesta riesgo-empresa-detalle" hidden></div>
+              </div>
+            </label>
+            <div class="filter-wrap riesgos-select riesgos-select-mes">
+              <span>Mes de operación</span>
+              <div id="riesgoMesOperacionValue" class="riesgo-month-readonly"></div>
+            </div>
+          </div>
+
+          <div id="riesgoTotalBanner" class="riesgo-total-banner riesgo-total-medio">
+            <div id="riesgoTotalText" class="riesgo-total-text">Riesgo Total: Medio (2.00 / 4.0)</div>
+            <div id="riesgoTotalAction" class="riesgo-total-action">Monitoreo estándar recomendado</div>
+            <div class="cold-thresholds-wrap riesgo-total-thresholds-wrap">
+              <button
+                id="riesgoTotalThresholdBtn"
+                class="cold-threshold-toggle"
+                type="button"
+                aria-expanded="false"
+                onclick="toggleRiesgoTotalThresholds(this)"
+              >
+                Ver umbrales aplicados
+              </button>
+              <div id="riesgoTotalThresholdPanel" class="cold-thresholds-panel" hidden></div>
+            </div>
+          </div>
+
+          <div class="riesgo-kpi-grid">
+            <div class="riesgo-kpi-card">
+              <div class="riesgo-kpi-title">Riesgo de Cadena Fría</div>
+              <p id="riesgoFrioNivel" class="risk-pill">Calculando...</p>
+              <div id="riesgoFrioTexto" class="riesgo-kpi-text riesgo-kpi-text-cold"></div>
+            </div>
+            <div class="riesgo-kpi-card">
+              <div class="riesgo-kpi-title">Riesgo Logístico</div>
+              <p id="riesgoLogNivel" class="risk-pill">Calculando...</p>
+              <div id="riesgoLogTexto" class="riesgo-kpi-text"></div>
+            </div>
+            <div class="riesgo-kpi-card">
+              <div class="riesgo-kpi-title">Riesgo Regulatorio</div>
+              <p id="riesgoRegNivel" class="risk-pill">Calculando...</p>
+              <div id="riesgoRegTexto" class="riesgo-kpi-text"></div>
+            </div>
+            <div class="riesgo-kpi-card">
+              <div class="riesgo-kpi-title">Riesgo Meteorológico</div>
+              <p id="riesgoMeteoNivel" class="risk-pill">Calculando...</p>
+              <p id="riesgoMeteoTexto" class="riesgo-kpi-text"></p>
+            </div>
+          </div>
+
+          <div class="riesgo-pitch-card">
+            <h4>¿Cómo ayuda CLCircular?</h4>
+            <p id="riesgoPitchTexto">Cargando síntesis de riesgo...</p>
+            <button
+              id="riesgoClCircularBtn"
+              class="competidor-btn riesgo-clcircular-btn"
+              type="button"
+              aria-expanded="false"
+              aria-controls="riesgoClCircularPanel"
+              onclick="toggleRiesgoClCircularInfo()"
+            >
+              Qué hace CL Circular
+            </button>
+            <div id="riesgoClCircularPanel" class="riesgo-clcircular-panel" hidden>
+              <ul class="riesgo-clcircular-list">
+                <li>Registra 24/7: temperatura, humedad, golpes, luz (apertura de puertas), gases, geolocalización.</li>
+                <li>
+                  Detecta apertura de puertas: el sensor de luz activa alerta cuando abren el contenedor en inspección
+                  FDA en Nogales. Eso es exactamente el riesgo que identificamos.
+                </li>
+                <li>
+                  Genera certificado descargable: la plataforma tiene botón "Descargar Certificado" por viaje. Eso es
+                  lo que necesita el importador en EE.UU. para FSMA 204.
+                </li>
+                <li>
+                  Alertas en tiempo real: vía 5G durante el trayecto, o vía Bluetooth al llegar a destino (sensor BG).
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="riesgo-detail-grid">
+            <div class="detalle-card detalle-card-map">
+              <h4>Mapas de ruta con riesgo superpuesto</h4>
+              <div class="riesgo-mapas-grid">
+                <div class="riesgo-mapa-bloque">
+                  <h5>Ruta terrestre</h5>
+                  <p id="riesgoRutaTerrestreDist">Distancia estimada al destino: calculando...</p>
+                  <div id="riesgoRutaTerrestreMap" class="riesgo-ruta-map"></div>
+                  <p id="riesgoRutaTerrestreTexto" class="riesgo-ruta-texto"></p>
+                </div>
+                <div class="riesgo-mapa-bloque">
+                  <h5>Ruta marítima</h5>
+                  <p id="riesgoRutaMaritimaDist">Distancia estimada al destino: calculando...</p>
+                  <div id="riesgoRutaMaritimaMap" class="riesgo-ruta-map"></div>
+                  <p id="riesgoRutaMaritimaTexto" class="riesgo-ruta-texto"></p>
+                </div>
+              </div>
+              <div id="riesgoRutaLeyenda" class="riesgo-ruta-leyenda"></div>
+              <p class="riesgo-proxy-nota">
+                Las rutas y cruces fronterizos asignados a cada empresa son estimaciones proxy basadas en la ubicación
+                geográfica de su sede y el corredor más probable según su producto y destino. No han sido validadas
+                directamente con cada empresa. La confirmación de rutas reales es parte del proceso de prospección
+                comercial.
+              </p>
+            </div>
+            <div class="detalle-card detalle-card-oleaje">
+              <h4>Oleaje puerto (Marine API)</h4>
+              <p id="riesgoOleajeTexto"></p>
+            </div>
+            <div class="detalle-card detalle-card-forecast">
+              <h4>Pronóstico 7 días (Open-Meteo)</h4>
+              <p id="riesgoPronosticoTexto"></p>
+              <div id="riesgoPronosticoGrid" class="forecast-grid"></div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="tab-content" id="tab-clustering">
+        <article class="panel">
+          <div class="panel-title-wrap">
+            <div class="cluster-title-row">
+              <h3>Segmentación de Prospectos por Perfil Comercial</h3>
+              <button
+                id="clusterPcaToggleBtn"
+                class="competidor-btn cluster-pca-toggle"
+                type="button"
+                aria-pressed="false"
+              >
+                Proyección PCA 2D
+              </button>
+            </div>
+            <p>K-means k=2 · One-hot encoding · Elbow method · n=5 empresas</p>
+          </div>
+          <div id="clusterScatterPlot" class="serie-plot"></div>
+          <div id="clusterPcaPlot" class="serie-plot"></div>
+          <p id="clusterNotice" class="chart-notice"></p>
+          <div id="clusterElbowPlot" class="serie-plot"></div>
+          <div class="cluster-cards" id="clusterProfileCards">
+            <article class="cluster-card">
+              <h4>Cluster Ancla — Escala y volumen</h4>
+              <p>65 FTL/mes promedio</p>
+              <p>$82.5M USD ventas est.</p>
+              <p>Riesgo score: 2.5</p>
+              <p>Aduana: 100% Nogales</p>
+              <p>Temperatura: 100% congelado ≤−18°C</p>
+              <p>Certificaciones: 4.5 promedio</p>
+              <p>
+                Mayor escala operativa y producto congelado estándar. Argumento de venta: volumen + FSMA 204 +
+                reducción de rechazos FDA.
+              </p>
+            </article>
+            <article class="cluster-card">
+              <h4>Cluster Estratégico — Criticidad térmica</h4>
+              <p>46.7 FTL/mes promedio</p>
+              <p>$57.5M USD ventas est.</p>
+              <p>Riesgo score: 3.7</p>
+              <p>Aduana: 100% Otay Mesa</p>
+              <p>Temperatura: fresco + vivo + ultra congelado</p>
+              <p>Certificaciones: 3.7 promedio</p>
+              <p>
+                Mayor criticidad térmica y complejidad de producto. Argumento de venta: cada embarque perdido vale
+                más; el costo del sensor es marginal frente al valor unitario del producto.
+              </p>
+            </article>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Perfil</th>
+                  <th>FTL/mes</th>
+                  <th>Aduana</th>
+                  <th>Riesgo</th>
+                  <th>Trimestre</th>
+                </tr>
+              </thead>
+              <tbody id="clusterSummaryBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <footer class="app-footer">
+        <div class="app-footer-sources" id="appFooterSources"></div>
+        <button
+          id="footerGlossaryBtn"
+          class="footer-glossary-btn"
+          type="button"
+          aria-expanded="false"
+          aria-controls="footerGlossaryPanel"
+          onclick="toggleFooterGlossary()"
+        >
+          Glosario ▼
+        </button>
+        <section id="footerGlossaryPanel" class="footer-glossary-panel" hidden>
+          <h4>Glosario</h4>
+          <div class="footer-glossary-item">
+            <strong>FTL — Full Truck Load</strong>
+            <p>
+              Un camión completo. Cuando decimos "350 FTL/mes" significa 350 camiones llenos cruzando esa aduana por
+              mes con mariscos. Es la unidad estándar de logística terrestre.
+            </p>
+          </div>
+          <div class="footer-glossary-item">
+            <strong>C-TPAT — Customs-Trade Partnership Against Terrorism</strong>
+            <p>
+              Programa voluntario de CBP (aduana de EE.UU.) para operadores de confianza. Beneficio práctico: acceso a
+              FAST Lane, reducción de tiempo de cruce de hasta 60% y menor probabilidad de inspección física (de ~20%
+              a ~4%).
+            </p>
+          </div>
+        </section>
+      </footer>
+    </main>
+  </body>
+</html>
