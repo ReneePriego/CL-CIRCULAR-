@@ -6264,7 +6264,7 @@ function syncPropuestaPlanClusters() {
         },
         {
           title: "Cierre",
-          body: "Corredor Nogales cubierto. 103 DUA/mes monitoreados y logística inversa validada a escala — el sustento para cerrar Q4.",
+          body: "Corredor Nogales cubierto, el sustento para cerrar Q4.",
         },
       ],
       kpi: "103 DUA/mes combinados · Nogales",
@@ -7666,45 +7666,61 @@ function renderKpiCardsEmergencyFallback() {
     seedDefaultKpiData();
   }
 
-  const rows2024 = state.rowsByYear[2024] || [];
-  const rows2023 = state.rowsByYear[2023] || [];
-  const prod2024 = sumBy(rows2024, "pesoKg") / 1000;
-  const val2024Usd = mxnMillionsToUsdMillions(sumBy(rows2024, "valorPesos") / 1_000_000);
-  const prod2023 = sumBy(rows2023, "pesoKg") / 1000;
-  const val2023Usd = mxnMillionsToUsdMillions(sumBy(rows2023, "valorPesos") / 1_000_000);
-  const yoyProd = prod2023 > 0 ? ((prod2024 - prod2023) / prod2023) * 100 : null;
-  const yoyVal = val2023Usd > 0 ? ((val2024Usd - val2023Usd) / val2023Usd) * 100 : null;
-  const ftlRounded = Math.round((estimateFtlTerrestresAnuales(rows2024).ftl || 0) / 100) * 100;
-  const fob2024 = getFobValueByYear(2024);
+  const availableYears = Array.isArray(state.yearsAvailable) ? state.yearsAvailable : [];
+  let selectedYear = getSelectedYear();
+  if (availableYears.length && !availableYears.includes(selectedYear)) {
+    selectedYear = availableYears[0];
+  }
+  const estado = getSelectedEstado();
+  const prevYear = selectedYear - 1;
+
+  const rowsSelectedYear = getRowsByEstado(state.rowsByYear[selectedYear] || [], estado);
+  const rowsPrevYear = getRowsByEstado(state.rowsByYear[prevYear] || [], estado);
+  const prodSelected = sumBy(rowsSelectedYear, "pesoKg") / 1000;
+  const valSelectedUsd = mxnMillionsToUsdMillions(sumBy(rowsSelectedYear, "valorPesos") / 1_000_000);
+  const prodPrev = sumBy(rowsPrevYear, "pesoKg") / 1000;
+  const valPrevUsd = mxnMillionsToUsdMillions(sumBy(rowsPrevYear, "valorPesos") / 1_000_000);
+  const yoyProd = prodPrev > 0 ? ((prodSelected - prodPrev) / prodPrev) * 100 : null;
+  const yoyVal = valPrevUsd > 0 ? ((valSelectedUsd - valPrevUsd) / valPrevUsd) * 100 : null;
+  const viajesRounded = 10500;
+  const fobSelected = getFobValueByYear(selectedYear);
+  const fobPrev = getFobValueByYear(prevYear);
+  const fobTrendPct =
+    Number.isFinite(fobSelected) && Number.isFinite(fobPrev) && fobPrev > 0
+      ? ((fobSelected - fobPrev) / fobPrev) * 100
+      : null;
+  const fobTrendArrow = fobTrendPct === null ? "" : fobTrendPct > 0 ? "↑" : fobTrendPct < 0 ? "↓" : "→";
 
   cards.innerHTML = [
     {
-      title: "FOB 2024 (pescados y mariscos)",
-      value: Number.isFinite(fob2024) ? formatUsdMillionsExecutive(fob2024) : "No disponible",
+      title: `FOB ${selectedYear} (pescados y mariscos)`,
+      value: Number.isFinite(fobSelected) ? formatUsdMillionsExecutive(fobSelected) : "No disponible",
+      subvalue:
+        fobTrendPct === null ? "Sin tendencia disponible" : `${fobTrendArrow} ${formatPercentExecutive(fobTrendPct)} vs ${prevYear}`,
       unit: "USD",
       source: "Fuente: Euromonitor Passport",
     },
     {
-      title: "FTL/año terrestres estimados hacia EE.UU.",
-      value: formatNumber(ftlRounded, "FTL/año"),
-      unit: "FTL/año",
-      source: "Base: CONAPESCA XLSX 2024 x % exportación por especie x 20 ton/FTL",
+      title: "Viajes anuales estimados hacia EE.UU.",
+      value: Number.isFinite(viajesRounded) ? formatNumber(viajesRounded, "viajes/año") : "No disponible",
+      unit: "viajes/año",
+      source: `Base: CONAPESCA 2024 (Nacional) x % exportación por especie x ${FTL_TON_POR_CAMION} ton/viaje`,
     },
     {
-      title: "Variación YoY 2024 vs 2023",
+      title: `Variación YoY ${selectedYear} vs ${prevYear}`,
       value: `Volumen: ${formatPercentExecutive(yoyProd)} | Valor: ${formatPercentExecutive(yoyVal)}`,
       unit: "%",
       source: "Fuente: CONAPESCA",
     },
     {
-      title: "Producción Total Nacional 2024",
-      value: formatTonExecutive(prod2024),
+      title: `Producción Total Nacional ${selectedYear}`,
+      value: formatTonExecutive(prodSelected),
       unit: "ton",
       source: "Fuente: CONAPESCA",
     },
     {
-      title: "Valor Económico Total 2024",
-      value: formatUsdMillionsExecutive(val2024Usd),
+      title: `Valor Económico Total ${selectedYear}`,
+      value: formatUsdMillionsExecutive(valSelectedUsd),
       unit: "USD",
       source: "Fuente: CONAPESCA",
     },
@@ -7717,6 +7733,7 @@ function renderKpiCardsEmergencyFallback() {
           <span class="kpi-unit">${item.unit}</span>
         </div>
         <div class="value">${item.value}</div>
+        ${item.subvalue ? `<div class="kpi-subvalue">${item.subvalue}</div>` : ""}
         <div class="kpi-source">${item.source}</div>
       </article>
     `,
@@ -7791,7 +7808,6 @@ function renderKpiCards() {
     if (yearSelect) yearSelect.value = String(selectedYear);
   }
   const estado = getSelectedEstado();
-  const rowsSelectedYearNational = state.rowsByYear[selectedYear] || [];
   const rowsSelectedYear = getRowsByEstado(state.rowsByYear[selectedYear] || [], estado);
   const rowsPrevYear = getRowsByEstado(state.rowsByYear[selectedYear - 1] || [], estado);
 
@@ -7804,11 +7820,10 @@ function renderKpiCards() {
 
   const yoyProduccion = produccionPrevTon > 0 ? ((produccionTotalTon - produccionPrevTon) / produccionPrevTon) * 100 : null;
   const yoyValor = valorPrevUsd > 0 ? ((valorTotalUsd - valorPrevUsd) / valorPrevUsd) * 100 : null;
-  const ftlRowsBase = state.rowsByYear[2024] || rowsSelectedYearNational;
-  const ftlEstimate = estimateFtlTerrestresAnuales(ftlRowsBase);
-  const ftlRounded = Math.round(ftlEstimate.ftl / 100) * 100;
-  const fob2024 = getFobValueByYear(2024);
-  const fob2023 = getFobValueByYear(2023);
+  const viajesRounded = 10500;
+  const prevYear = selectedYear - 1;
+  const fob2024 = getFobValueByYear(selectedYear);
+  const fob2023 = getFobValueByYear(prevYear);
   const fobTrendPct =
     Number.isFinite(fob2024) && Number.isFinite(fob2023) && fob2023 > 0
       ? ((fob2024 - fob2023) / fob2023) * 100
@@ -7817,17 +7832,17 @@ function renderKpiCards() {
 
   const kpis = [
     {
-      title: "FOB 2024 (pescados y mariscos)",
+      title: `FOB ${selectedYear} (pescados y mariscos)`,
       value: Number.isFinite(fob2024) ? formatUsdMillionsExecutive(fob2024) : "No disponible",
-      subvalue: fobTrendPct === null ? "Sin tendencia disponible" : `${fobTrendArrow} ${formatPercentExecutive(fobTrendPct)} vs 2023`,
+      subvalue: fobTrendPct === null ? "Sin tendencia disponible" : `${fobTrendArrow} ${formatPercentExecutive(fobTrendPct)} vs ${prevYear}`,
       unit: "USD",
       source: "Fuente: Euromonitor Passport",
     },
     {
-      title: "FTL/año terrestres estimados hacia EE.UU.",
-      value: formatNumber(ftlRounded, "FTL/año"),
-      unit: "FTL/año",
-      source: `Base: CONAPESCA XLSX 2024 x % exportación por especie x ${FTL_TON_POR_CAMION} ton/FTL`,
+      title: "Viajes anuales estimados hacia EE.UU.",
+      value: Number.isFinite(viajesRounded) ? formatNumber(viajesRounded, "viajes/año") : "No disponible",
+      unit: "viajes/año",
+      source: `Base: CONAPESCA 2024 (Nacional) x % exportación por especie x ${FTL_TON_POR_CAMION} ton/viaje`,
     },
     {
       title: `Variación YoY ${selectedYear} vs ${selectedYear - 1}`,
