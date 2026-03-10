@@ -332,7 +332,7 @@ const empresasFallbackV2 = [
     rutaTerrestre: "Ensenada -> Tijuana -> Los Ángeles.",
     rutaMaritima: "Ensenada -> Japón (Súper congeladores).",
     cruceFronterizo: "Otay Mesa, Tijuana.",
-    tempRequerida: "Fresco: <= 4 C / Cong: <= -60 C",
+    tempRequerida: "Fresco: <= 4 C / Cong: <= -18 C",
     volumenEstimado: "+50 movimientos/mes (Envíos frecuentes en LTL y FTL).",
     riesgoLogisticoCsv: "CRITICO: Romper ultracongelación o pasar 4 C destruye valor comercial en horas.",
     ventasAnuales: "$80M - $120M+ USD",
@@ -4499,6 +4499,7 @@ function initTabs() {
   const tabs = {
     kpis: document.getElementById("tab-kpis"),
     propuesta: document.getElementById("tab-propuesta"),
+    viabilidad: document.getElementById("tab-viabilidad"),
     empresas: document.getElementById("tab-empresas"),
     riesgos: document.getElementById("tab-riesgos"),
     clustering: document.getElementById("tab-clustering"),
@@ -6058,6 +6059,7 @@ function renderPropuestaTab() {
   syncPropuestaPlanClusters();
   initPropuestaCoverageMap();
   bindPropuestaProspectButtons();
+  bindPropuestaViabilidadButton();
 }
 
 function initPropuestaCoverageMap() {
@@ -6230,15 +6232,15 @@ function syncPropuestaPlanClusters() {
         },
         {
           title: "Argumento de venta",
-          body: "Un rechazo en Otay Mesa destruye el lote completo. 88.3 DUA/mes = oportunidad recurrente de demostrar valor.",
+          body: "Un rechazo en Otay Mesa destruye el lote completo.",
         },
         {
           title: "Operación Baja Aqua",
-          body: "88.3 cruces al mes, cada uno con producto que no puede esperar ni refrigerarse de nuevo.",
+          body: "88.3 cruces al mes con producto que no puede esperar. Cada viaje es una oportunidad de demostrar valor.",
         },
         {
-          title: "Estrategia de marketing",
-          body: "'El chip llega listo — sin configuración, sin fricción.'",
+          title: "Cierre",
+          body: "Contrato piloto Q2 → contrato anual con datos reales de temperatura como evidencia.",
         },
       ],
       kpi: "88.3 DUA/mes · Otay Mesa",
@@ -6254,15 +6256,15 @@ function syncPropuestaPlanClusters() {
         },
         {
           title: "Argumento de venta",
-          body: "Producto congelado = menor riesgo térmico, pero FSMA 204 aplica igual. Más el 65% de recuperación fiscal SAT.",
-        },
-        {
-          title: "Modelo SaaS",
-          body: "Pago por viaje monitoreado. Sin compra de hardware.",
+          body: "Producto congelado = menor urgencia, pero FSMA 204 no distingue. Con 103 DUA/mes combinados, un rechazo documentado puede activar inspección sistemática en todos sus envíos.",
         },
         {
           title: "Estrategia de marketing",
           body: "ROI claro: ~$80K USD en producto perdido vs. costo anual del servicio.",
+        },
+        {
+          title: "Cierre",
+          body: "Corredor Nogales cubierto. 103 DUA/mes monitoreados y logística inversa validada a escala — el sustento para cerrar Q4.",
         },
       ],
       kpi: "103 DUA/mes combinados · Nogales",
@@ -6270,23 +6272,23 @@ function syncPropuestaPlanClusters() {
     {
       badge: "Q4 2026 · octubre-diciembre",
       clusterTitle: "Cluster Estratégico",
-      empresa: "Pacífico Aquaculture + Baja Shellfish Farms",
+      empresa: "Pacífico + Baja Shellfish",
       phases: [
         {
-          title: "Cobertura Pacífico",
-          body: "Lobina rayada fresca (≤4°C) y producto vivo. Cruces diarios Otay Mesa–San Diego.",
+          title: "Cobertura",
+          body: "Los dos entran en Q4 porque necesitan ver datos reales antes de confiar un lote fresco o vivo a un sensor nuevo.",
         },
         {
           title: "Impulsor regulatorio",
-          body: "FSMA 204 cierra el argumento. Sin documentación térmica no cruza.",
-        },
-        {
-          title: "Escala largo plazo",
-          body: "Alianzas 3PL como add-on en envíos perecederos.",
+          body: "Para fresco y vivo, el importador en EE.UU. exige trazabilidad térmica documentada por viaje. CL Circular lo genera automáticamente.",
         },
         {
           title: "Estrategia de marketing",
           body: "Economía circular: −50g e-waste, −200g CO₂ por chip recuperado.",
+        },
+        {
+          title: "Cierre del año",
+          body: "Con Q4 cerrado: corredor Pacífico completo, 5 contratos activos, 255.8 DUA/mes monitoreados.",
         },
       ],
       kpi: "64.7 DUA/mes combinados · Otay Mesa",
@@ -6309,7 +6311,11 @@ function syncPropuestaPlanClusters() {
 
     phaseEls.forEach((phaseEl, phaseIdx) => {
       const phaseCfg = cfg.phases[phaseIdx];
-      if (!phaseCfg) return;
+      if (!phaseCfg) {
+        phaseEl.hidden = true;
+        return;
+      }
+      phaseEl.hidden = false;
       const phaseTitleEl = phaseEl.querySelector("h4");
       const phaseBodyEl = phaseEl.querySelector("p");
       if (phaseTitleEl) phaseTitleEl.textContent = phaseCfg.title;
@@ -6346,13 +6352,77 @@ function findEmpresaIndexByName(name) {
 }
 
 function bindPropuestaProspectButtons() {
-  const buttons = document.querySelectorAll("#tab-propuesta [data-prospect-company]");
-  buttons.forEach((button) => {
+  const profileButtons = document.querySelectorAll("#tab-propuesta [data-prospect-company]");
+  profileButtons.forEach((button) => {
     button.onclick = () => {
       const targetCompany = button.getAttribute("data-prospect-company") || "";
       openProspectProfile(targetCompany);
     };
   });
+
+  const productButtons = document.querySelectorAll("#tab-propuesta [data-prospect-products-company]");
+  productButtons.forEach((button) => {
+    button.setAttribute("aria-expanded", "false");
+    button.textContent = "Ver productos";
+    button.onclick = () => {
+      const targetCompany = button.getAttribute("data-prospect-products-company") || "";
+      togglePropuestaProducts(button, targetCompany);
+    };
+  });
+}
+
+function togglePropuestaProducts(button, companyName) {
+  const card = button?.closest(".propuesta-prospect-card");
+  if (!card) return;
+  const main = card.querySelector(".propuesta-prospect-main");
+  if (!main) return;
+
+  let panel = card.querySelector(".propuesta-prospect-products");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "propuesta-prospect-products";
+    panel.hidden = true;
+    const actions = card.querySelector(".propuesta-prospect-actions");
+    if (actions && actions.parentElement === main) {
+      actions.insertAdjacentElement("afterend", panel);
+    } else {
+      main.appendChild(panel);
+    }
+  }
+
+  const isOpen = !panel.hidden;
+  if (isOpen) {
+    panel.hidden = true;
+    button.textContent = "Ver productos";
+    button.setAttribute("aria-expanded", "false");
+    return;
+  }
+
+  const allPanels = document.querySelectorAll("#tab-propuesta .propuesta-prospect-products");
+  allPanels.forEach((item) => {
+    item.hidden = true;
+  });
+  const allButtons = document.querySelectorAll("#tab-propuesta [data-prospect-products-company]");
+  allButtons.forEach((item) => {
+    item.textContent = "Ver productos";
+    item.setAttribute("aria-expanded", "false");
+  });
+
+  const empresa = findEmpresaByProspectName(companyName);
+  const productos = compactRouteText(empresa?.productos || empresa?.especialidad || NO_INFO);
+  panel.textContent = `Productos: ${productos}`;
+  panel.hidden = false;
+  button.textContent = "Ocultar productos";
+  button.setAttribute("aria-expanded", "true");
+}
+
+function bindPropuestaViabilidadButton() {
+  const button = document.getElementById("propuestaGoViabilidadBtn");
+  if (!button) return;
+  button.onclick = () => {
+    const viabilidadTabBtn = document.querySelector('.tab-button[data-tab="viabilidad"]');
+    if (viabilidadTabBtn) viabilidadTabBtn.click();
+  };
 }
 
 function openProspectProfile(companyName) {

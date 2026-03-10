@@ -37,9 +37,10 @@
       <section class="tabs">
         <div class="tabs-left">
           <button class="tab-button is-active" data-tab="kpis">Mercado</button>
-          <button class="tab-button" data-tab="propuesta">Estrategia de entrada</button>
-          <button class="tab-button" data-tab="empresas">Prospectos</button>
           <button class="tab-button" data-tab="riesgos">Diagnóstico</button>
+          <button class="tab-button" data-tab="propuesta">Estrategia de entrada</button>
+          <button class="tab-button" data-tab="viabilidad">Viabilidad financiera</button>
+          <button class="tab-button" data-tab="empresas">Prospectos</button>
         </div>
         <div class="tabs-actions header-tools">
           <a class="site-btn" href="https://www.clcircular.com/es/" target="_blank" rel="noopener noreferrer">Ir a sitio oficial</a>
@@ -134,6 +135,9 @@
                   <button class="propuesta-prospect-btn" type="button" data-prospect-company="Grupo Pinsa">
                     Ver perfil
                   </button>
+                  <button class="propuesta-prospect-btn" type="button" data-prospect-products-company="Grupo Pinsa">
+                    Ver productos
+                  </button>
                 </div>
               </div>
               <div class="propuesta-prospect-quarter">Q2 2026</div>
@@ -155,6 +159,13 @@
                   >
                     Ver perfil
                   </button>
+                  <button
+                    class="propuesta-prospect-btn"
+                    type="button"
+                    data-prospect-products-company="Grupo Acuícola Mexicano (GAM)"
+                  >
+                    Ver productos
+                  </button>
                 </div>
               </div>
               <div class="propuesta-prospect-quarter">Q2 2026</div>
@@ -173,6 +184,13 @@
                 <div class="propuesta-prospect-actions">
                   <button class="propuesta-prospect-btn" type="button" data-prospect-company="Baja Aqua-Farms">
                     Ver perfil
+                  </button>
+                  <button
+                    class="propuesta-prospect-btn"
+                    type="button"
+                    data-prospect-products-company="Baja Aqua-Farms"
+                  >
+                    Ver productos
                   </button>
                 </div>
               </div>
@@ -195,6 +213,13 @@
                   >
                     Ver perfil
                   </button>
+                  <button
+                    class="propuesta-prospect-btn"
+                    type="button"
+                    data-prospect-products-company="Pacífico Aquaculture"
+                  >
+                    Ver productos
+                  </button>
                 </div>
               </div>
               <div class="propuesta-prospect-quarter">Q3 2026</div>
@@ -215,6 +240,13 @@
                     data-prospect-company="Baja Shellfish Farms"
                   >
                     Ver perfil
+                  </button>
+                  <button
+                    class="propuesta-prospect-btn"
+                    type="button"
+                    data-prospect-products-company="Baja Shellfish Farms"
+                  >
+                    Ver productos
                   </button>
                 </div>
               </div>
@@ -271,12 +303,12 @@
                   <p>Atún sashimi y lobina rayada. Un rechazo FDA cuesta más que un año del servicio.</p>
                 </div>
                 <div class="propuesta-implementation-card propuesta-plan-phase">
-                  <h4>Modelo SaaS</h4>
-                  <p>Pago por viaje monitoreado. Sin compra de hardware.</p>
-                </div>
-                <div class="propuesta-implementation-card propuesta-plan-phase">
                   <h4>Estrategia de marketing</h4>
                   <p>ROI verificable: ~$80K USD en producto perdido vs. costo anual del servicio.</p>
+                </div>
+                <div class="propuesta-implementation-card propuesta-plan-phase">
+                  <h4>Cierre</h4>
+                  <p></p>
                 </div>
               </div>
               <p class="propuesta-plan-kpi">100 FTL/mes combinados · Otay Mesa</p>
@@ -309,25 +341,15 @@
           </div>
         </article>
 
-        <article class="panel propuesta-section propuesta-viabilidad">
-          <h3 class="propuesta-section-title">Viabilidad del modelo</h3>
-          <div class="propuesta-viabilidad-grid">
-            <article class="propuesta-viabilidad-kpi">
-              <div class="propuesta-viabilidad-value">&nbsp;</div>
-              <div class="propuesta-viabilidad-label">&nbsp;</div>
-            </article>
-            <article class="propuesta-viabilidad-kpi">
-              <div class="propuesta-viabilidad-value">&nbsp;</div>
-              <div class="propuesta-viabilidad-label">&nbsp;</div>
-            </article>
-            <article class="propuesta-viabilidad-kpi">
-              <div class="propuesta-viabilidad-value">&nbsp;</div>
-              <div class="propuesta-viabilidad-label">&nbsp;</div>
-            </article>
-          </div>
+        <article class="panel propuesta-section propuesta-go-viabilidad">
+          <button id="propuestaGoViabilidadBtn" class="propuesta-prospect-btn propuesta-go-viabilidad-btn" type="button">
+            Ir a Viabilidad financiera
+          </button>
         </article>
 
       </section>
+
+      <section class="tab-content" id="tab-viabilidad"></section>
 
       <section class="tab-content" id="tab-empresas">
         <article class="panel">

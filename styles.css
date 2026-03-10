@@ -1178,6 +1178,10 @@ canvas {
 
 .propuesta-prospect-actions {
   margin-top: 0.28rem;
+  display: flex;
+  align-items: center;
+  gap: 0.36rem;
+  flex-wrap: wrap;
 }
 
 .propuesta-prospect-btn {
@@ -1194,6 +1198,27 @@ canvas {
 
 .propuesta-prospect-btn:hover {
   background: #f6fbf8;
+}
+
+.propuesta-prospect-products {
+  margin-top: 0.34rem;
+  border: 1px solid #d8e7de;
+  border-left: 3px solid var(--propuesta-prospect-accent);
+  border-radius: 8px;
+  background: #f8fcf9;
+  color: #1f3646;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  padding: 0.34rem 0.5rem;
+}
+
+.propuesta-go-viabilidad {
+  display: flex;
+  justify-content: center;
+}
+
+.propuesta-go-viabilidad-btn {
+  min-width: 260px;
 }
 
 .propuesta-prospect-quarter {
