@@ -1614,6 +1614,7 @@ function parseEmpresasCsvWithXlsx(csvText) {
 function mapCsvRowToEmpresa(row) {
   const empresa = getCsvValue(row, ["empresa"], "");
   if (!empresa) return null;
+  if (normalizeHeader(empresa) === "empresa") return null;
 
   const ubicacion = getCsvValueLike(
     row,
@@ -1715,7 +1716,21 @@ function mapCsvRowToEmpresa(row) {
       "",
       true,
     ) || getCsvValueLike(row, ["temp_requerida", "temperatura_requerida", "nom_242"], "", true);
+  const viajesAnuales2026 = getCsvValueLike(
+    row,
+    [
+      "viajes_anuales_2026_est",
+      "viajes_anuales_2026",
+      "estimado_de_viajes_anuales_2026_est",
+      "viajes_anuales_est",
+      "viajes_anuales",
+    ],
+    "",
+    true,
+  );
+  const duaMes = getCsvValueLike(row, ["dua_mes", "dua_mes_est", "duas_mes", "dua"], "", true);
   const volumenEstimado = getCsvValueLike(row, ["volume_estimado", "volumen_estimado", "volumen"], "", true);
+  const volumenEstimadoFinal = volumenEstimado || viajesAnuales2026;
   const riesgoLogisticoCsv = getCsvValueLike(
     row,
     ["riesgo_logistico", "riesgo_logistico_operativo", "riesgo_logistico_empresa", "riesgo"],
@@ -1756,7 +1771,9 @@ function mapCsvRowToEmpresa(row) {
     rutaTerrestre: rutaTerrestreFinal,
     rutaMaritima,
     cruceFronterizo: cruceFronterizoFinal,
-    volumenEstimado,
+    volumenEstimado: volumenEstimadoFinal,
+    viajesAnuales2026,
+    duaMes,
     riesgoLogisticoCsv,
     ventasAnuales,
     retencion,
@@ -1811,7 +1828,7 @@ function extractTempFromAnyField(row) {
 
   const byTempPattern = values.find((value) => {
     const hasContext = /(CONGELADO|FRESCO|PASTEURIZADO|REFRIGERADO|VIVO|TEMP\.?\s*AMBIENTE)/i.test(value);
-    const hasTempMetric = /(°\s*C|\b\d+\s*C\b|-\s*18\s*C|<=\s*-?\d+\s*C)/i.test(value);
+    const hasTempMetric = /(°\s*C|\b-?\d+\s*°?\s*C\b|[-−]\s*18\s*°?\s*C|(?:<=|≤)\s*-?\d+\s*°?\s*C)/i.test(value);
     return hasContext && hasTempMetric;
   });
 
@@ -3730,6 +3747,7 @@ function calcRegulatoryRisk(empresa, logRiskLevel = "medio", cruceInfo = null) {
   );
   const normalizedRoute = normalizeGeoKey(routeText);
   const tempText = compactRouteText(empresa?.tempRequerida || "");
+  const tempTextNorm = normalizeTempRiskText(tempText);
   const threshold = getCriticalThreshold(tempText);
 
   const hasUsSignals = [
@@ -3752,9 +3770,12 @@ function calcRegulatoryRisk(empresa, logRiskLevel = "medio", cruceInfo = null) {
   ].some((token) => normalizedRoute.includes(token));
 
   const hasTempRule =
-    !!tempText &&
-    (/<=|°| C\b/i.test(tempText) ||
-      /(CONGELADO|FRESCO|REFRIGERADO|PASTEURIZADO|VIVO)/i.test(tempText));
+    !!tempTextNorm &&
+    (hasTempMarker(tempTextNorm, "4") ||
+      hasTempMarker(tempTextNorm, "7") ||
+      hasTempMarker(tempTextNorm, "-18") ||
+      hasTempMarker(tempTextNorm, "-60") ||
+      /(CONGELADO|FRESCO|REFRIGERADO|PASTEURIZADO|VIVO|TEMP\.?\s*AMBIENTE)/i.test(tempTextNorm));
 
   const cTpatRaw = normalizeGeoKey(cruceInfo?.cTpatActivo || "");
   const cTpatActivo =
@@ -3820,11 +3841,20 @@ function normalizeTempRiskText(text) {
   return String(text || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[−–—]/g, "-")
+    .replace(/≤/g, "<=")
+    .replace(/≥/g, ">=")
+    .replace(/º/g, "°")
+    .replace(/\s+/g, " ")
+    .trim()
     .toLowerCase();
 }
 
 function hasTempMarker(text, value) {
-  const escaped = String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = String(value)
+    .replace(/[−–—]/g, "-")
+    .replace(/\s+/g, "")
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = `(^|[^0-9-])(?:<=|<|=)?\\s*${escaped}\\s*°?\\s*c\\b`;
   return new RegExp(pattern, "i").test(String(text || ""));
 }
@@ -3888,7 +3918,7 @@ function toggleColdThresholds(button) {
 }
 
 function buildColdChainProxyText({ tempRequerida, maxTemp, proxy, mesOperacion }) {
-  const tempLabel = escapeHtml(compactRouteText(stripNom242Tag(tempRequerida)));
+  const tempLabel = escapeHtml(formatTempDisplayText(tempRequerida, { includeFrozenAlso: true }));
   const maxTempLabel = Number.isFinite(maxTemp) ? escapeHtml(formatNumber(maxTemp, "°C")) : "No disponible";
   const monthLabel = escapeHtml(getMesOperacionLabel(mesOperacion));
   const annualizedDays = getColdProxyAnnualizedDays(proxy, mesOperacion);
@@ -4571,7 +4601,7 @@ function syncFooterGlossaryByTab(tab) {
   const panel = document.getElementById("footerGlossaryPanel");
   if (!button || !panel) return;
 
-  if (tab !== "propuesta") {
+  if (tab === "clustering") {
     button.setAttribute("hidden", "");
     panel.setAttribute("hidden", "");
     button.setAttribute("aria-expanded", "false");
@@ -5114,15 +5144,62 @@ const CLUSTER_METRIC_OVERRIDES = {
   "BAJA SHELLFISH FARMS": {
     ftlMes: 40,
     ventasMUsd: 22,
-    tempScore: 2,
     riesgoLogistico: 4,
     cruceScore: 3,
     numCertificaciones: 3,
   },
 };
 
+const CLUSTER_BASE_ROWS = [
+  { empresa: "Grupo Pinsa", ftlLabel: "42.8", ftlValue: 42.8, aduana: "Nogales", riesgo: "MODERADO", quarter: "Q2 2026" },
+  { empresa: "GAM", ftlLabel: "60.0", ftlValue: 60.0, aduana: "Nogales", riesgo: "ALTO", quarter: "Q2 2026" },
+  {
+    empresa: "Baja Aqua-Farms",
+    ftlLabel: "88.3",
+    ftlValue: 88.3,
+    aduana: "Otay Mesa",
+    riesgo: "CRÍTICO",
+    quarter: "Q3 2026",
+  },
+  {
+    empresa: "Pacífico Aquaculture",
+    ftlLabel: "24.7",
+    ftlValue: 24.7,
+    aduana: "Otay Mesa",
+    riesgo: "ALTO",
+    quarter: "Q3 2026",
+  },
+  {
+    empresa: "Baja Shellfish Farms",
+    ftlLabel: "40.0",
+    ftlValue: 40.0,
+    aduana: "Otay Mesa",
+    riesgo: "CRÍTICO",
+    quarter: "Q4 2026",
+  },
+];
+
+const ESTRATEGIA_PROSPECT_OVERRIDES = {
+  "BAJA AQUA FARMS": { profile: "Ancla", quarter: "Q2 2026" },
+  "GRUPO PINSA": { profile: "Estratégico", quarter: "Q3 2026" },
+  "GAM": { profile: "Estratégico", quarter: "Q3 2026" },
+  "GRUPO ACUICOLA MEXICANO GAM": { profile: "Estratégico", quarter: "Q3 2026" },
+  "PACIFICO AQUACULTURE": { profile: "Estratégico", quarter: "Q4 2026" },
+  "BAJA SHELLFISH FARMS": { profile: "Estratégico", quarter: "Q4 2026" },
+};
+
 function normalizeCompanyKey(name) {
   return normalizeGeoKey(name);
+}
+
+function getEstrategiaProspectOverride(name = "") {
+  const key = normalizeCompanyKey(name);
+  if (!key) return null;
+  if (ESTRATEGIA_PROSPECT_OVERRIDES[key]) return ESTRATEGIA_PROSPECT_OVERRIDES[key];
+  const matchKey = Object.keys(ESTRATEGIA_PROSPECT_OVERRIDES).find(
+    (overrideKey) => key.includes(overrideKey) || overrideKey.includes(key),
+  );
+  return matchKey ? ESTRATEGIA_PROSPECT_OVERRIDES[matchKey] : null;
 }
 
 function selectPriorityClusterCompanies(rows = []) {
@@ -5173,12 +5250,12 @@ function parseSalesMUsd(text) {
 }
 
 function inferTempScore(tempRequerida = "") {
-  const raw = String(tempRequerida || "").toLowerCase();
+  const raw = normalizeTempRiskText(tempRequerida);
   if (!raw) return 2;
-  if (raw.includes("-60")) return 4;
-  if (raw.includes("vivo") || /\b7\s*°?\s*c\b/.test(raw)) return 2;
-  if (raw.includes("fresco") || /\b4\s*°?\s*c\b/.test(raw)) return 3;
-  if (raw.includes("congelado") || raw.includes("-18")) return 1;
+  if (hasTempMarker(raw, "-60")) return 4;
+  if (raw.includes("vivo") || hasTempMarker(raw, "7")) return 2;
+  if (raw.includes("fresco") || hasTempMarker(raw, "4")) return 3;
+  if (raw.includes("congelado") || hasTempMarker(raw, "-18")) return 1;
   return 2;
 }
 
@@ -5212,7 +5289,16 @@ function countCertificaciones(certText = "") {
 function buildClusterRecord(empresa) {
   const key = normalizeCompanyKey(empresa?.empresa || "");
   const override = CLUSTER_METRIC_OVERRIDES[key] || {};
-  const ftlMes = Number.isFinite(override.ftlMes) ? override.ftlMes : parseRangeAverage(empresa?.volumenEstimado || "");
+  const annualTrips = getEmpresaViajesAnuales(empresa);
+  const duaMesFromAnnual = Number.isFinite(annualTrips) && annualTrips > 0 ? annualTrips / 12 : NaN;
+  const duaMesFromCsv = parseFlexibleNumber(empresa?.duaMes || "");
+  const ftlMes = Number.isFinite(override.ftlMes)
+    ? override.ftlMes
+    : Number.isFinite(duaMesFromAnnual)
+      ? duaMesFromAnnual
+      : Number.isFinite(duaMesFromCsv)
+        ? duaMesFromCsv
+        : parseRangeAverage(empresa?.volumenEstimado || "");
   const ventasMUsd = Number.isFinite(override.ventasMUsd) ? override.ventasMUsd : parseSalesMUsd(empresa?.ventasAnuales || "");
   const tempScore = Number.isFinite(override.tempScore) ? override.tempScore : inferTempScore(empresa?.tempRequerida || "");
   const riesgoLogistico = Number.isFinite(override.riesgoLogistico)
@@ -5308,7 +5394,7 @@ function pickInitialKmeansCentroids(points = [], records = []) {
 }
 
 function runKMeans(points = [], records = [], k = 3, maxIterations = 40) {
-  if (!points.length) return { assignments: [], centroids: [] };
+  if (!points.length) return { assignments: [], centroids: [], inertia: 0 };
   const safeK = Math.min(k, points.length);
   let centroids = pickInitialKmeansCentroids(points, records).slice(0, safeK);
   let assignments = Array(points.length).fill(0);
@@ -5338,7 +5424,12 @@ function runKMeans(points = [], records = [], k = 3, maxIterations = 40) {
     if (!changed) break;
   }
 
-  return { assignments, centroids };
+  const inertia = points.reduce((acc, point, idx) => {
+    const centroid = centroids[assignments[idx]];
+    return acc + euclideanDistanceSq(point, centroid);
+  }, 0);
+
+  return { assignments, centroids, inertia };
 }
 
 function covarianceMatrix(points = []) {
@@ -5409,6 +5500,69 @@ function projectPca2D(points = []) {
   }));
 }
 
+function spreadOverlappingPcaRows(rows = []) {
+  if (!Array.isArray(rows) || !rows.length) return [];
+  if (rows.length === 1) return rows.map((row) => ({ ...row }));
+
+  const cloned = rows.map((row) => ({
+    ...row,
+    pcaX: Number(row.pcaX) || 0,
+    pcaY: Number(row.pcaY) || 0,
+  }));
+
+  const getSpans = () => {
+    const xs = cloned.map((row) => row.pcaX);
+    const ys = cloned.map((row) => row.pcaY);
+    return {
+      xSpan: Math.max(0.001, Math.max(...xs) - Math.min(...xs)),
+      ySpan: Math.max(0.001, Math.max(...ys) - Math.min(...ys)),
+    };
+  };
+
+  const { xSpan, ySpan } = getSpans();
+  const minDx = Math.max(0.05, xSpan * 0.08);
+  const minDy = Math.max(0.05, ySpan * 0.08);
+  const baseJitterX = Math.max(0.01, xSpan * 0.02);
+  const baseJitterY = Math.max(0.01, ySpan * 0.02);
+
+  // Jitter determinista inicial para evitar solapes exactos.
+  cloned.forEach((row, idx) => {
+    const angle = (2 * Math.PI * idx) / cloned.length;
+    row.pcaX += Math.cos(angle) * baseJitterX * 0.35;
+    row.pcaY += Math.sin(angle) * baseJitterY * 0.35;
+  });
+
+  // Separación iterativa para puntos demasiado cercanos en pantalla.
+  for (let iter = 0; iter < 10; iter += 1) {
+    let moved = false;
+    for (let i = 0; i < cloned.length; i += 1) {
+      for (let j = i + 1; j < cloned.length; j += 1) {
+        const a = cloned[i];
+        const b = cloned[j];
+        const dx = b.pcaX - a.pcaX;
+        const dy = b.pcaY - a.pcaY;
+        const closeX = Math.abs(dx) < minDx;
+        const closeY = Math.abs(dy) < minDy;
+        if (!closeX || !closeY) continue;
+
+        const pushX = (minDx - Math.abs(dx)) * 0.5;
+        const pushY = (minDy - Math.abs(dy)) * 0.5;
+        const dirX = dx >= 0 ? 1 : -1;
+        const dirY = dy >= 0 ? 1 : -1;
+
+        a.pcaX -= dirX * pushX;
+        b.pcaX += dirX * pushX;
+        a.pcaY -= dirY * pushY;
+        b.pcaY += dirY * pushY;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+
+  return cloned;
+}
+
 function profileByCluster(assignments = [], records = []) {
   const stats = new Map();
   assignments.forEach((clusterId, idx) => {
@@ -5448,6 +5602,67 @@ function profileByCluster(assignments = [], records = []) {
   }
 
   return labelMap;
+}
+
+function getClusteredProspectData() {
+  const selectedCompanies = selectPriorityClusterCompanies(empresasData);
+  const records = selectedCompanies.map((empresa) => buildClusterRecord(empresa));
+  const recordsByKey = new Map(records.map((record) => [normalizeCompanyKey(record.empresa), record]));
+
+  const rowsWithFeatures = CLUSTER_BASE_ROWS.map((item) => {
+    const record =
+      recordsByKey.get(normalizeCompanyKey(item.empresa)) ||
+      records.find((r) => normalizeCompanyKey(r.empresa).includes(normalizeCompanyKey(item.empresa)));
+    return {
+      ...item,
+      ftlMesFeature: Number.isFinite(record?.ftlMes) ? record.ftlMes : item.ftlValue,
+      ventasMUsd: Number.isFinite(record?.ventasMUsd) ? record.ventasMUsd : 0,
+      tempScore: Number.isFinite(record?.tempScore) ? record.tempScore : 2,
+      riesgoLogisticoScore: Number.isFinite(record?.riesgoLogistico)
+        ? record.riesgoLogistico
+        : inferLogisticRiskScore(item.riesgo || ""),
+      cruceScore: Number.isFinite(record?.cruceScore) ? record.cruceScore : 2,
+      numCertificaciones: Number.isFinite(record?.numCertificaciones) ? record.numCertificaciones : 0,
+    };
+  });
+
+  const clusteringRecords = rowsWithFeatures.map((item) => ({
+    ftlMes: Number(item.ftlMesFeature) || 0,
+    ventasMUsd: Number(item.ventasMUsd) || 0,
+    tempScore: Number(item.tempScore) || 0,
+    riesgoLogistico: Number(item.riesgoLogisticoScore) || 0,
+    cruceScore: Number(item.cruceScore) || 0,
+    numCertificaciones: Number(item.numCertificaciones) || 0,
+  }));
+  const clusteringMatrix = buildClusterFeatureMatrix(clusteringRecords);
+  const clusteringResult = runKMeans(clusteringMatrix, clusteringRecords, 2);
+  const profileMap = profileByCluster(clusteringResult.assignments, clusteringRecords);
+  const rows = rowsWithFeatures.map((item, idx) => {
+    const clusterId = Number.isInteger(clusteringResult.assignments[idx]) ? clusteringResult.assignments[idx] : 0;
+    return {
+      ...item,
+      clusterId,
+      profile: profileMap[clusterId] || "Estratégico",
+    };
+  });
+
+  return {
+    rows,
+    clusteringRecords,
+    clusteringMatrix,
+    recordsCount: records.length,
+  };
+}
+
+function getClusteredProspectRowByName(name = "") {
+  const key = normalizeCompanyKey(name);
+  if (!key) return null;
+  const { rows } = getClusteredProspectData();
+  return (
+    rows.find((row) => normalizeCompanyKey(row.empresa) === key) ||
+    rows.find((row) => normalizeCompanyKey(row.empresa).includes(key) || key.includes(normalizeCompanyKey(row.empresa))) ||
+    null
+  );
 }
 
 function clusterRiskLabel(score) {
@@ -5498,80 +5713,12 @@ function renderClustering() {
   if (!plotEl || !elbowEl || !tbody) return;
   setClusterPcaVisibility();
   const showPca = !!pcaVisible;
+  const clusterData = getClusteredProspectData();
+  const fixedRows = clusterData.rows;
+  const clusteringRecords = clusterData.clusteringRecords;
+  const clusteringMatrix = clusterData.clusteringMatrix;
 
-  const selectedCompanies = selectPriorityClusterCompanies(empresasData);
-  const records = selectedCompanies.map((empresa) => buildClusterRecord(empresa));
-  const recordsByKey = new Map(records.map((record) => [normalizeCompanyKey(record.empresa), record]));
-
-  const fixedRows = [
-    {
-      empresa: "Grupo Pinsa",
-      profile: "Ancla",
-      clusterId: 1,
-      ftlLabel: "60-80",
-      ftlValue: 70,
-      aduana: "Nogales",
-      riesgo: "MODERADO",
-      quarter: "Q2 2026",
-    },
-    {
-      empresa: "GAM",
-      profile: "Ancla",
-      clusterId: 1,
-      ftlLabel: "50-70",
-      ftlValue: 60,
-      aduana: "Nogales",
-      riesgo: "ALTO",
-      quarter: "Q2 2026",
-    },
-    {
-      empresa: "Baja Aqua-Farms",
-      profile: "Estratégico",
-      clusterId: 0,
-      ftlLabel: "50",
-      ftlValue: 50,
-      aduana: "Otay Mesa",
-      riesgo: "CRÍTICO",
-      quarter: "Q3 2026",
-    },
-    {
-      empresa: "Pacífico Aquaculture",
-      profile: "Estratégico",
-      clusterId: 0,
-      ftlLabel: "50",
-      ftlValue: 50,
-      aduana: "Otay Mesa",
-      riesgo: "ALTO",
-      quarter: "Q3 2026",
-    },
-    {
-      empresa: "Baja Shellfish Farms",
-      profile: "Estratégico",
-      clusterId: 0,
-      ftlLabel: "30-50",
-      ftlValue: 40,
-      aduana: "Otay Mesa",
-      riesgo: "CRÍTICO",
-      quarter: "Q4 2026",
-    },
-  ].map((item) => {
-    const record =
-      recordsByKey.get(normalizeCompanyKey(item.empresa)) ||
-      records.find((r) => normalizeCompanyKey(r.empresa).includes(normalizeCompanyKey(item.empresa)));
-    return {
-      ...item,
-      ftlMesFeature: Number.isFinite(record?.ftlMes) ? record.ftlMes : item.ftlValue,
-      ventasMUsd: Number.isFinite(record?.ventasMUsd) ? record.ventasMUsd : 0,
-      tempScore: Number.isFinite(record?.tempScore) ? record.tempScore : 2,
-      riesgoLogisticoScore: Number.isFinite(record?.riesgoLogistico)
-        ? record.riesgoLogistico
-        : inferLogisticRiskScore(item.riesgo || ""),
-      cruceScore: Number.isFinite(record?.cruceScore) ? record.cruceScore : 2,
-      numCertificaciones: Number.isFinite(record?.numCertificaciones) ? record.numCertificaciones : 0,
-    };
-  });
-
-  if (records.length < 3) {
+  if (clusterData.recordsCount < 3) {
     if (noticeEl) noticeEl.textContent = "Sin datos suficientes para clustering (mínimo 3 empresas).";
     tbody.innerHTML = '<tr><td colspan="6">Sin datos suficientes.</td></tr>';
     if (typeof Plotly !== "undefined") {
@@ -5591,10 +5738,11 @@ function renderClustering() {
   if (typeof Plotly !== "undefined") {
     const traces = profileOrder.map((profile) => {
       const items = fixedRows.filter((item) => item.profile === profile);
+      const clusterRef = items.length ? items[0].clusterId : "";
       return {
         type: "scatter",
         mode: "markers",
-        name: profile === "Ancla" ? "Ancla (Cluster 1)" : "Estratégico (Cluster 0)",
+        name: clusterRef === "" ? profile : `${profile} (Cluster ${clusterRef})`,
         x: items.map((item) => item.ftlValue),
         y: items.map((item) => item.ventasMUsd),
         customdata: items.map((item) => [item.empresa, item.profile, item.clusterId, item.ftlLabel, item.aduana, item.riesgo]),
@@ -5604,7 +5752,7 @@ function renderClustering() {
           line: { color: "#ffffff", width: 1.2 },
         },
         hovertemplate:
-          "Empresa: %{customdata[0]}<br>Perfil: %{customdata[1]} (Cluster %{customdata[2]})<br>FTL/mes: %{customdata[3]}<br>Aduana: %{customdata[4]}<br>Riesgo: %{customdata[5]}<extra></extra>",
+          "Empresa: %{customdata[0]}<br>Perfil: %{customdata[1]} (Cluster %{customdata[2]})<br>DUA/mes: %{customdata[3]}<br>Aduana: %{customdata[4]}<br>Riesgo: %{customdata[5]}<extra></extra>",
       };
     });
 
@@ -5620,7 +5768,7 @@ function renderClustering() {
         font: { family: "Montserrat, sans-serif", color: "#1f3443", size: 12 },
         legend: { orientation: "h", x: 0, y: 1.12, font: { size: 11, color: "#4b6475" } },
         xaxis: {
-          title: "FTL/mes",
+          title: "DUA/mes",
           tickfont: { color: "#355264" },
           showgrid: true,
           gridcolor: "rgba(10, 45, 74, 0.08)",
@@ -5652,11 +5800,20 @@ function renderClustering() {
       }));
       const pcaMatrix = buildClusterFeatureMatrix(pcaFeatures);
       const pcaProjection = projectPca2D(pcaMatrix);
-      const pcaRows = fixedRows.map((item, idx) => ({
+      const pcaRowsBase = fixedRows.map((item, idx) => ({
         ...item,
         pcaX: Number.isFinite(pcaProjection[idx]?.x) ? pcaProjection[idx].x : 0,
         pcaY: Number.isFinite(pcaProjection[idx]?.y) ? pcaProjection[idx].y : 0,
       }));
+      const pcaRows = spreadOverlappingPcaRows(pcaRowsBase);
+      const pcaXVals = pcaRows.map((item) => Number(item.pcaX) || 0);
+      const pcaYVals = pcaRows.map((item) => Number(item.pcaY) || 0);
+      const pcaXMin = Math.min(...pcaXVals);
+      const pcaXMax = Math.max(...pcaXVals);
+      const pcaYMin = Math.min(...pcaYVals);
+      const pcaYMax = Math.max(...pcaYVals);
+      const pcaXPad = Math.max(0.2, (pcaXMax - pcaXMin || 1) * 0.15);
+      const pcaYPad = Math.max(0.2, (pcaYMax - pcaYMin || 1) * 0.15);
 
       const pcaTraces = profileOrder.map((profile) => {
         const items = pcaRows.filter((item) => item.profile === profile);
@@ -5668,7 +5825,6 @@ function renderClustering() {
           y: items.map((item) => item.pcaY),
           customdata: items.map((item) => [
             item.empresa,
-            item.profile,
             item.ftlLabel,
             item.ventasMUsd,
             item.tempScore,
@@ -5677,12 +5833,12 @@ function renderClustering() {
             item.numCertificaciones,
           ]),
           marker: {
-            size: 13,
+            size: 10,
             color: profileColors[profile],
             line: { color: "#ffffff", width: 1.2 },
           },
           hovertemplate:
-            "Empresa: %{customdata[0]}<br>Perfil: %{customdata[1]}<br>FTL/mes: %{customdata[2]}<br>Ventas est.: %{customdata[3]:.1f} MUSD<br>Temp score: %{customdata[4]}<br>Riesgo logístico: %{customdata[5]}<br>Cruce score: %{customdata[6]}<br>Certificaciones: %{customdata[7]}<extra></extra>",
+            "Empresa: %{customdata[0]}<br>DUA/mes: %{customdata[1]}<br>Ventas est.: %{customdata[2]:.1f} MUSD<br>Temp score: %{customdata[3]}<br>Riesgo logístico: %{customdata[4]}<br>Cruce score: %{customdata[5]}<br>Certificaciones: %{customdata[6]}<extra></extra>",
         };
       });
 
@@ -5692,16 +5848,19 @@ function renderClustering() {
         {
           title: {
             text: "Proyección PCA 2D (6 features del clustering)",
+            x: 0.5,
+            y: 0.97,
             font: { family: "Montserrat, sans-serif", size: 15, color: "#1f3443" },
           },
-          margin: { l: 56, r: 20, t: 46, b: 56 },
+          margin: { t: 60, b: 50, l: 60, r: 20 },
           paper_bgcolor: "#ffffff",
           plot_bgcolor: "#ffffff",
           hovermode: "closest",
           font: { family: "Montserrat, sans-serif", color: "#1f3443", size: 12 },
-          legend: { orientation: "h", x: 0, y: 1.12, font: { size: 11, color: "#4b6475" } },
+          showlegend: false,
           xaxis: {
             title: "Componente principal 1",
+            range: [pcaXMin - pcaXPad, pcaXMax + pcaXPad],
             tickfont: { color: "#355264" },
             showgrid: true,
             gridcolor: "rgba(10, 45, 74, 0.08)",
@@ -5709,6 +5868,7 @@ function renderClustering() {
           },
           yaxis: {
             title: "Componente principal 2",
+            range: [pcaYMin - pcaYPad, pcaYMax + pcaYPad],
             tickfont: { color: "#355264" },
             gridcolor: "rgba(10, 45, 74, 0.10)",
             zeroline: false,
@@ -5726,8 +5886,12 @@ function renderClustering() {
       Plotly.purge(pcaEl);
     }
 
-    const elbowKs = [1, 2, 3, 4];
-    const elbowVals = [70.0, 39.44, 24.38, 10.25];
+    const elbowKs = [1, 2, 3, 4].filter((k) => k <= Math.max(1, clusteringRecords.length));
+    const elbowVals = elbowKs.map((k) => runKMeans(clusteringMatrix, clusteringRecords, k).inertia);
+    const hasSecondK = elbowVals.length > 1;
+    const dropPercent = hasSecondK && elbowVals[0] > 0 ? ((elbowVals[0] - elbowVals[1]) / elbowVals[0]) * 100 : 0;
+    const annotationX = hasSecondK ? elbowKs[1] : elbowKs[0];
+    const annotationY = hasSecondK ? elbowVals[1] : elbowVals[0];
     Plotly.react(
       elbowEl,
       [
@@ -5770,11 +5934,11 @@ function renderClustering() {
         },
         annotations: [
           {
-            x: 2,
-            y: 39.44,
+            x: annotationX,
+            y: annotationY,
             xanchor: "left",
             yanchor: "bottom",
-            text: "k óptimo seleccionado<br>Mayor caída: -43.7%",
+            text: `k óptimo seleccionado<br>Mayor caída: -${dropPercent.toFixed(1)}%`,
             showarrow: true,
             arrowhead: 2,
             arrowsize: 1,
@@ -5884,9 +6048,14 @@ function renderPropuestaTab() {
     const fob2024 = getFobValueByYear(2024);
     const fobText = Number.isFinite(fob2024) ? `$${Math.floor(fob2024).toLocaleString("es-MX")}M USD` : "$776M USD";
     if (fobEl) fobEl.textContent = fobText;
-    if (ftlEl) ftlEl.textContent = "10,500 FTL";
+    if (ftlEl) {
+      ftlEl.textContent = "3,070";
+      const middleLabelEl = ftlEl.parentElement?.querySelector(".propuesta-hero-label");
+      if (middleLabelEl) middleLabelEl.textContent = "viajes/año";
+    }
   }
   syncPropuestaProspectsLocations();
+  syncPropuestaPlanClusters();
   initPropuestaCoverageMap();
   bindPropuestaProspectButtons();
 }
@@ -5918,7 +6087,7 @@ function initPropuestaCoverageMap() {
         <div class="prospect-popup">
           <strong>${escapeHtml(point.nombre)}</strong><br/>
           <span><strong>Perfil:</strong> ${escapeHtml(point.perfil)}</span><br/>
-          <span><strong>FTL/mes:</strong> ${escapeHtml(point.ftl)}</span><br/>
+          <span><strong>Envíos/año:</strong> ${escapeHtml(point.envios)}</span><br/>
           <span><strong>Trimestre:</strong> ${escapeHtml(point.trimestre)}</span>
         </div>
       `,
@@ -5936,15 +6105,17 @@ function initPropuestaCoverageMap() {
 }
 
 function getPropuestaCoveragePoints() {
-  return [
-    { nombre: "Grupo Pinsa", lat: 23.2494, lng: -106.4111, perfil: "Ancla", ftl: "60-80", trimestre: "Q2 2026" },
-    { nombre: "GAM", lat: 23.2194, lng: -106.4411, perfil: "Ancla", ftl: "50-70", trimestre: "Q2 2026" },
+  const clusterRows = getClusteredProspectData().rows;
+  const clusterByKey = new Map(clusterRows.map((row) => [normalizeCompanyKey(row.empresa), row]));
+  const basePoints = [
+    { nombre: "Grupo Pinsa", lat: 23.2494, lng: -106.4111, perfil: "Ancla", enviosFallback: "513 envíos/año", trimestre: "Q2 2026" },
+    { nombre: "GAM", lat: 23.2194, lng: -106.4411, perfil: "Ancla", enviosFallback: "720 envíos/año", trimestre: "Q2 2026" },
     {
       nombre: "Baja Aqua-Farms",
       lat: 31.88,
       lng: -116.59,
       perfil: "Estratégico",
-      ftl: "50",
+      enviosFallback: "1,060 envíos/año",
       trimestre: "Q3 2026",
     },
     {
@@ -5952,7 +6123,7 @@ function getPropuestaCoveragePoints() {
       lat: 31.84,
       lng: -116.62,
       perfil: "Estratégico",
-      ftl: "50",
+      enviosFallback: "296 envíos/año",
       trimestre: "Q3 2026",
     },
     {
@@ -5960,10 +6131,22 @@ function getPropuestaCoveragePoints() {
       lat: 31.86,
       lng: -116.65,
       perfil: "Estratégico",
-      ftl: "30-50",
+      enviosFallback: "480 envíos/año",
       trimestre: "Q4 2026",
     },
   ];
+  return basePoints.map((point) => {
+    const empresa = findEmpresaByProspectName(point.nombre);
+    const clusterRow = clusterByKey.get(normalizeCompanyKey(point.nombre));
+    const override = getEstrategiaProspectOverride(empresa?.empresa || point.nombre);
+    const envios = formatEnviosLabel(empresa?.viajesAnuales2026 || empresa?.volumenEstimado || point.enviosFallback || "");
+    return {
+      ...point,
+      perfil: override?.profile || clusterRow?.profile || point.perfil,
+      trimestre: override?.quarter || clusterRow?.quarter || point.trimestre,
+      envios,
+    };
+  });
 }
 
 function buildProspectProfileIcon(perfil = "Estratégico") {
@@ -5981,23 +6164,157 @@ function buildProspectProfileIcon(perfil = "Estratégico") {
 function syncPropuestaProspectsLocations() {
   const cards = document.querySelectorAll("#tab-propuesta .propuesta-prospect-card");
   if (!cards.length) return;
+  const anclaList = document.querySelector("#tab-propuesta .propuesta-prospect-list-ancla");
+  const estrategicoList = document.querySelector("#tab-propuesta .propuesta-prospect-list-estrategico");
+  const clusterRows = getClusteredProspectData().rows;
+  const clusterByKey = new Map(clusterRows.map((row) => [normalizeCompanyKey(row.empresa), row]));
 
   cards.forEach((card) => {
     const nameEl = card.querySelector(".propuesta-prospect-head strong");
     const metaEl = card.querySelector(".propuesta-prospect-meta");
+    const badgeEl = card.querySelector(".propuesta-profile-badge");
+    const quarterEl = card.querySelector(".propuesta-prospect-quarter");
     if (!nameEl || !metaEl) return;
 
     const empresa = findEmpresaByProspectName(nameEl.textContent || "");
     if (!empresa) return;
+    const clusterRow = clusterByKey.get(normalizeCompanyKey(empresa.empresa || nameEl.textContent || ""));
+    const override = getEstrategiaProspectOverride(empresa.empresa || nameEl.textContent || "");
+    const profile = override?.profile || clusterRow?.profile || "Estratégico";
+    const quarter = override?.quarter || clusterRow?.quarter || quarterEl?.textContent || "";
 
     const ubicacion = (compactRouteText(empresa.ubicacion || "") || NO_INFO).replace(/\.\s*$/, "");
+    const duaMensualLabel = formatDuaMesLabelFromEmpresa(empresa);
     const parts = String(metaEl.textContent || "")
       .split("·")
       .map((part) => part.trim())
       .filter(Boolean);
-
-    const prefix = parts[0] || "";
+    const prefix = duaMensualLabel && duaMensualLabel !== NO_INFO ? duaMensualLabel : parts[0] || "";
     metaEl.textContent = prefix ? `${prefix} · ${ubicacion}` : ubicacion;
+
+    if (badgeEl) badgeEl.textContent = profile;
+    if (quarterEl && quarter) quarterEl.textContent = quarter;
+
+    card.classList.remove("propuesta-q1", "propuesta-q2", "propuesta-q3");
+    card.classList.add(profile === "Ancla" ? "propuesta-q2" : "propuesta-q3");
+
+    if (anclaList && estrategicoList) {
+      if (profile === "Ancla") {
+        anclaList.appendChild(card);
+      } else {
+        estrategicoList.appendChild(card);
+      }
+    }
+  });
+
+  // Si una lista queda con un solo prospecto (ej. Ancla), hacerla full-width y centrada.
+  [anclaList, estrategicoList].forEach((listEl) => {
+    if (!listEl) return;
+    const totalCards = listEl.querySelectorAll(".propuesta-prospect-card").length;
+    listEl.classList.toggle("propuesta-prospect-list-single", totalCards === 1);
+  });
+}
+
+function syncPropuestaPlanClusters() {
+  const columns = document.querySelectorAll("#tab-propuesta .propuesta-plan-column");
+  if (!columns.length) return;
+  const planConfig = [
+    {
+      badge: "Q2 2026 · mayo-junio",
+      clusterTitle: "Cluster Ancla",
+      empresa: "Baja Aqua-Farms",
+      phases: [
+        {
+          title: "Entrada al mercado",
+          body: "Primer cliente por criticidad térmica. Atún sashimi fresco a ≤4°C — el prospecto donde un fallo vale más que un año de servicio.",
+        },
+        {
+          title: "Argumento de venta",
+          body: "Un rechazo en Otay Mesa destruye el lote completo. 88.3 DUA/mes = oportunidad recurrente de demostrar valor.",
+        },
+        {
+          title: "Operación Baja Aqua",
+          body: "88.3 cruces al mes, cada uno con producto que no puede esperar ni refrigerarse de nuevo.",
+        },
+        {
+          title: "Estrategia de marketing",
+          body: "'El chip llega listo — sin configuración, sin fricción.'",
+        },
+      ],
+      kpi: "88.3 DUA/mes · Otay Mesa",
+    },
+    {
+      badge: "Q3 2026 · julio-septiembre",
+      clusterTitle: "Cluster Estratégico",
+      empresa: "Grupo Pinsa + GAM",
+      phases: [
+        {
+          title: "Escalamiento comercial",
+          body: "Datos reales de Baja Aqua abren la conversación. Pinsa y GAM son volumen, no urgencia.",
+        },
+        {
+          title: "Argumento de venta",
+          body: "Producto congelado = menor riesgo térmico, pero FSMA 204 aplica igual. Más el 65% de recuperación fiscal SAT.",
+        },
+        {
+          title: "Modelo SaaS",
+          body: "Pago por viaje monitoreado. Sin compra de hardware.",
+        },
+        {
+          title: "Estrategia de marketing",
+          body: "ROI claro: ~$80K USD en producto perdido vs. costo anual del servicio.",
+        },
+      ],
+      kpi: "103 DUA/mes combinados · Nogales",
+    },
+    {
+      badge: "Q4 2026 · octubre-diciembre",
+      clusterTitle: "Cluster Estratégico",
+      empresa: "Pacífico Aquaculture + Baja Shellfish Farms",
+      phases: [
+        {
+          title: "Cobertura Pacífico",
+          body: "Lobina rayada fresca (≤4°C) y producto vivo. Cruces diarios Otay Mesa–San Diego.",
+        },
+        {
+          title: "Impulsor regulatorio",
+          body: "FSMA 204 cierra el argumento. Sin documentación térmica no cruza.",
+        },
+        {
+          title: "Escala largo plazo",
+          body: "Alianzas 3PL como add-on en envíos perecederos.",
+        },
+        {
+          title: "Estrategia de marketing",
+          body: "Economía circular: −50g e-waste, −200g CO₂ por chip recuperado.",
+        },
+      ],
+      kpi: "64.7 DUA/mes combinados · Otay Mesa",
+    },
+  ];
+
+  columns.forEach((column, idx) => {
+    const cfg = planConfig[idx];
+    if (!cfg) return;
+    const badgeEl = column.querySelector(".propuesta-implementation-badge");
+    const clusterTitleEl = column.querySelector("h4");
+    const empresaEl = column.querySelector(".propuesta-plan-companies");
+    const phaseEls = column.querySelectorAll(".propuesta-plan-phase");
+    const kpiEl = column.querySelector(".propuesta-plan-kpi");
+
+    if (badgeEl) badgeEl.textContent = cfg.badge;
+    if (clusterTitleEl) clusterTitleEl.textContent = cfg.clusterTitle;
+    if (empresaEl) empresaEl.textContent = cfg.empresa;
+    if (kpiEl) kpiEl.textContent = cfg.kpi;
+
+    phaseEls.forEach((phaseEl, phaseIdx) => {
+      const phaseCfg = cfg.phases[phaseIdx];
+      if (!phaseCfg) return;
+      const phaseTitleEl = phaseEl.querySelector("h4");
+      const phaseBodyEl = phaseEl.querySelector("p");
+      if (phaseTitleEl) phaseTitleEl.textContent = phaseCfg.title;
+      if (phaseBodyEl) phaseBodyEl.textContent = phaseCfg.body;
+    });
   });
 }
 
@@ -6065,6 +6382,7 @@ function renderEmpresas() {
   const tbody = document.getElementById("clientesTablaBody");
   const toggleBtn = document.getElementById("clientesShowMoreBtn");
   if (!tbody) return;
+  ensureClientesDuaUi();
 
   const visibleCount = state.clientesShowAll ? empresasData.length : Math.min(3, empresasData.length);
   const rowsToRender = empresasData.slice(0, visibleCount);
@@ -6080,7 +6398,7 @@ function renderEmpresas() {
         empresa.telefono ||
         (/(whatsapp|tel)/i.test(empresa.contacto || "") ? empresa.contacto : "");
       const emailRaw = empresa.email || extractEmailFromText(empresa.contacto || "");
-      const volumenRaw = compactRouteText(empresa.volumenEstimado || "");
+      const volumenRaw = formatDuaMesLabelFromEmpresa(empresa);
       const aduanaCruceRaw = compactRouteText(empresa.cruceFronterizo || terrestre.nombre || "");
       const tempRequeridaRaw = empresa.tempRequerida || inferTempRequerida(productos, empresa.actividad || "");
       return `
@@ -6121,6 +6439,46 @@ function renderEmpresas() {
   }
 }
 
+function getEmpresaViajesAnuales(empresa) {
+  const csvTrips = parseFlexibleNumber(empresa?.viajesAnuales2026 || "");
+  if (Number.isFinite(csvTrips) && csvTrips > 0) return csvTrips;
+
+  const cfgTrips = parseFlexibleNumber(getProspectMapBaseConfig(empresa?.empresa || "")?.envios || "");
+  if (Number.isFinite(cfgTrips) && cfgTrips > 0) return cfgTrips;
+
+  return NaN;
+}
+
+function formatDuaMesLabelFromEmpresa(empresa) {
+  const annualTrips = getEmpresaViajesAnuales(empresa);
+  if (!Number.isFinite(annualTrips) || annualTrips <= 0) return NO_INFO;
+  const monthly = annualTrips / 12;
+  return `${monthly.toLocaleString("es-MX", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} DUA/mes`;
+}
+
+function ensureClientesDuaUi() {
+  const table = document.querySelector("#tab-empresas table");
+  const volumenHeader = table?.querySelector("thead th:nth-child(5)");
+  if (volumenHeader) {
+    volumenHeader.textContent = "Volumen (DUA/mes)";
+  }
+
+  const tableWrap = document.querySelector("#tab-empresas .clientes-table-wrap");
+  if (!tableWrap) return;
+
+  let noteEl = document.getElementById("clientesDuaNote");
+  if (!noteEl) {
+    noteEl = document.createElement("p");
+    noteEl.id = "clientesDuaNote";
+    noteEl.style.margin = "0.5rem 0 0 0";
+    noteEl.style.fontSize = "0.75rem";
+    noteEl.style.color = "#667784";
+    tableWrap.insertAdjacentElement("afterend", noteEl);
+  }
+  noteEl.textContent =
+    "Fuente: Veritrade — Pescados_y_Mariscos_Exportaciones.xlsx, registros aduanales 2025. DUA/mes = DUAs totales ÷ 12 meses.";
+}
+
 function initEmpresasMap() {
   const mapEl = document.getElementById("clientesMap");
   if (!mapEl || typeof L === "undefined") return;
@@ -6144,14 +6502,16 @@ function initEmpresasMap() {
     const lng = Number.isFinite(prospectConfig?.lng) ? prospectConfig.lng : sedeCoord.lng;
     const empresaLabel = escapeHtml(compactRouteText(empresa.empresa || "Empresa"));
     const perfil = escapeHtml(prospectConfig?.perfil || "Estratégico");
-    const ftl = escapeHtml(prospectConfig?.ftl || formatFtlLabelFromVolume(empresa.volumenEstimado || ""));
+    const envios = escapeHtml(
+      formatEnviosLabel(empresa.viajesAnuales2026 || prospectConfig?.envios || empresa.volumenEstimado || ""),
+    );
     const producto = escapeHtml(compactRouteText(empresa.productos || empresa.especialidad || NO_INFO));
     const trimestre = escapeHtml(prospectConfig?.trimestre || "Q3 2026");
     const popup = `
       <div class="prospect-popup">
         <strong>${empresaLabel}</strong><br/>
         <span><strong>Perfil:</strong> ${perfil}</span><br/>
-        <span><strong>FTL/mes:</strong> ${ftl}</span><br/>
+        <span><strong>Envíos/año:</strong> ${envios}</span><br/>
         <span><strong>Producto principal:</strong> ${producto}</span><br/>
         <span><strong>Trimestre de contacto:</strong> ${trimestre}</span>
       </div>
@@ -6176,15 +6536,14 @@ function initEmpresasMap() {
   state.empresasMap = map;
 }
 
-function getProspectMapConfig(name = "") {
+function getProspectMapBaseConfig(name = "") {
   const key = normalizeCompanyKey(name);
   if (key.includes("GRUPO PINSA")) {
     return {
       lat: 23.2494,
       lng: -106.4111,
-      perfil: "Ancla",
       markerCode: "A1",
-      ftl: "60-80",
+      envios: "513",
       trimestre: "Q2 2026",
     };
   }
@@ -6192,9 +6551,8 @@ function getProspectMapConfig(name = "") {
     return {
       lat: 23.2194,
       lng: -106.4411,
-      perfil: "Ancla",
       markerCode: "A2",
-      ftl: "50-70",
+      envios: "720",
       trimestre: "Q2 2026",
     };
   }
@@ -6202,9 +6560,8 @@ function getProspectMapConfig(name = "") {
     return {
       lat: 31.88,
       lng: -116.59,
-      perfil: "Estratégico",
       markerCode: "E1",
-      ftl: "50",
+      envios: "1060",
       trimestre: "Q3 2026",
     };
   }
@@ -6212,9 +6569,8 @@ function getProspectMapConfig(name = "") {
     return {
       lat: 31.84,
       lng: -116.62,
-      perfil: "Estratégico",
       markerCode: "E2",
-      ftl: "50",
+      envios: "296",
       trimestre: "Q3 2026",
     };
   }
@@ -6222,13 +6578,23 @@ function getProspectMapConfig(name = "") {
     return {
       lat: 31.86,
       lng: -116.65,
-      perfil: "Estratégico",
       markerCode: "E3",
-      ftl: "30-50",
+      envios: "480",
       trimestre: "Q4 2026",
     };
   }
   return null;
+}
+
+function getProspectMapConfig(name = "") {
+  const base = getProspectMapBaseConfig(name);
+  if (!base) return null;
+  const clusterRow = getClusteredProspectRowByName(name);
+  return {
+    ...base,
+    perfil: clusterRow?.profile || "Estratégico",
+    trimestre: clusterRow?.quarter || base.trimestre || "Q3 2026",
+  };
 }
 
 function buildProspectMarkerIcon(code, perfil = "Estratégico") {
@@ -6249,11 +6615,11 @@ function addProspectMapLegend(map) {
     div.innerHTML = `
       <div class="prospect-map-legend-item">
         <span class="prospect-map-legend-dot prospect-map-legend-dot-ancla"></span>
-        Verde oscuro = Cluster Ancla (Q2 2026)
+        Verde oscuro = Cluster Ancla
       </div>
       <div class="prospect-map-legend-item">
         <span class="prospect-map-legend-dot prospect-map-legend-dot-estrategico"></span>
-        Verde medio = Cluster Estratégico (Q3-Q4 2026)
+        Verde medio = Cluster Estratégico
       </div>
     `;
     return div;
@@ -6267,6 +6633,29 @@ function formatFtlLabelFromVolume(value = "") {
   const match = text.match(/(\d+\s*(?:-\s*\d+)?)\s*FTL/i);
   if (match && match[1]) return match[1].replace(/\s+/g, "");
   return text;
+}
+
+function formatEnviosLabel(value = "") {
+  const text = compactRouteText(value);
+  if (!text || text === NO_INFO) return NO_INFO;
+  if (/env[ií]os|viajes/i.test(text)) return text;
+
+  const rangeMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:a|-|–|—)\s*(\d+(?:[.,]\d+)?)/i);
+  if (rangeMatch) {
+    const min = Number(rangeMatch[1].replace(/,/g, ""));
+    const max = Number(rangeMatch[2].replace(/,/g, ""));
+    if (Number.isFinite(min) && Number.isFinite(max)) {
+      return `${Math.round(min).toLocaleString("es-MX")}-${Math.round(max).toLocaleString("es-MX")} envíos/año`;
+    }
+  }
+
+  const numberMatch = text.match(/(\d+(?:[.,]\d+)?)/);
+  if (numberMatch) {
+    const valueNum = Number(numberMatch[1].replace(/,/g, ""));
+    if (Number.isFinite(valueNum)) return `${Math.round(valueNum).toLocaleString("es-MX")} envíos/año`;
+  }
+
+  return `${text} envíos/año`;
 }
 
 function focusEmpresaOnMap(index, openPopup = false) {
@@ -6645,11 +7034,40 @@ function formatRouteCell(text) {
 }
 
 function formatTempCell(text) {
-  const value = stripNom242Tag(text);
+  const value = formatTempDisplayText(text, { includeFrozenAlso: true });
   if (!value) return NO_INFO;
   const firstLine = value.split("\n").map((part) => part.trim()).find(Boolean) || value;
   const full = compactRouteText(value);
   return `<span title="${escapeHtml(full)}">${escapeHtml(firstLine)}</span>`;
+}
+
+function formatTempDisplayText(text, { includeFrozenAlso = false } = {}) {
+  let value = compactRouteText(stripNom242Tag(text || ""));
+  if (!value) return "";
+
+  value = value
+    .replace(/[−–—]/g, "-")
+    .replace(/≤/g, "<=")
+    .replace(/≥/g, ">=")
+    .replace(/\bCong(?:\.|elado)?\s*:/gi, "Congelado:")
+    .replace(/\bTemp\.\s*ambiente\b/gi, "Temp. ambiente")
+    .replace(/°\s*C/gi, " C")
+    .replace(/\s*\/\s*/g, " | ")
+    .replace(/\s*·\s*/g, " | ")
+    .replace(/<=\s*/g, "<= ")
+    .replace(/>=\s*/g, ">= ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  const normalized = normalizeTempRiskText(value);
+  const hasFrozenMarker =
+    normalized.includes("congelado") || hasTempMarker(normalized, "-18") || hasTempMarker(normalized, "-60");
+
+  if (includeFrozenAlso && !hasFrozenMarker) {
+    value = `${value} | Congelado: <= -18 C también`;
+  }
+
+  return value;
 }
 
 function escapeHtml(text) {
