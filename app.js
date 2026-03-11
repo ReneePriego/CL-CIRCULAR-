@@ -6397,15 +6397,15 @@ function buildPropuestaValorHtml() {
     <div class="propuesta-valor-grid">
       <div class="propuesta-implementation-card propuesta-plan-phase">
         <h4>📋 Cumplimiento FSMA 204</h4>
-        <p>Cada viaje genera un registro térmico certificado por ENAC — la documentación que el importador en EE.UU. exige desde enero 2026.</p>
+        <p>Cada viaje genera el registro térmico que el importador en EE.UU. exige desde enero 2026.</p>
       </div>
       <div class="propuesta-implementation-card propuesta-plan-phase">
-        <h4>⚠️ Mitigación de riesgo real</h4>
-        <p>Un rechazo en frontera supera el costo anual del servicio. CLCircular convierte ese riesgo en un certificado automático por viaje.</p>
+        <h4>⚠️ Economía del riesgo</h4>
+        <p>Un solo rechazo en frontera cuesta más que un año del servicio.</p>
       </div>
       <div class="propuesta-implementation-card propuesta-plan-phase">
         <h4>🔄 Modelo sin fricción</h4>
-        <p>Sin inversión inicial. Sin configuración. Pago por viaje monitoreado — el exportador paga por resultado, no por hardware.</p>
+        <p>Sin inversión inicial. Pago por viaje monitoreado.</p>
       </div>
     </div>
   `;
