@@ -5400,6 +5400,15 @@ const CLUSTER_METRIC_OVERRIDES = {
   },
 };
 
+const CLUSTER_SALES_BASELINE_MUSD = {
+  "GRUPO PINSA": 125,
+  "GAM": 40,
+  "GRUPO ACUICOLA MEXICANO GAM": 40,
+  "BAJA AQUA FARMS": 100,
+  "PACIFICO AQUACULTURE": 50,
+  "BAJA SHELLFISH FARMS": 22,
+};
+
 const CLUSTER_BASE_ROWS = [
   { empresa: "Grupo Pinsa", ftlLabel: "42.8", ftlValue: 42.8, aduana: "Nogales", riesgo: "MODERADO", quarter: "Q2 2026" },
   { empresa: "GAM", ftlLabel: "60.0", ftlValue: 60.0, aduana: "Nogales", riesgo: "ALTO", quarter: "Q2 2026" },
@@ -5539,6 +5548,7 @@ function countCertificaciones(certText = "") {
 function buildClusterRecord(empresa) {
   const key = normalizeCompanyKey(empresa?.empresa || "");
   const override = CLUSTER_METRIC_OVERRIDES[key] || {};
+  const baselineSales = Number(CLUSTER_SALES_BASELINE_MUSD[key]);
   const annualTrips = getEmpresaViajesAnuales(empresa);
   const duaMesFromAnnual = Number.isFinite(annualTrips) && annualTrips > 0 ? annualTrips / 12 : NaN;
   const duaMesFromCsv = parseFlexibleNumber(empresa?.duaMes || "");
@@ -5549,7 +5559,14 @@ function buildClusterRecord(empresa) {
       : Number.isFinite(duaMesFromCsv)
         ? duaMesFromCsv
         : parseRangeAverage(empresa?.volumenEstimado || "");
-  const ventasMUsd = Number.isFinite(override.ventasMUsd) ? override.ventasMUsd : parseSalesMUsd(empresa?.ventasAnuales || "");
+  const ventasFromCsv = parseSalesMUsd(empresa?.ventasAnuales || "");
+  const ventasMUsd = Number.isFinite(override.ventasMUsd)
+    ? override.ventasMUsd
+    : Number.isFinite(ventasFromCsv)
+      ? ventasFromCsv
+      : Number.isFinite(baselineSales)
+        ? baselineSales
+        : 20;
   const tempScore = Number.isFinite(override.tempScore) ? override.tempScore : inferTempScore(empresa?.tempRequerida || "");
   const riesgoLogistico = Number.isFinite(override.riesgoLogistico)
     ? override.riesgoLogistico
