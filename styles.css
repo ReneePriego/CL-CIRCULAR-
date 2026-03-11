@@ -14,10 +14,15 @@
 
 body {
   margin: 0;
-  font-family: "Montserrat", sans-serif;
+  font-family: "Segoe UI", Arial, sans-serif;
   background: #ffffff;
   color: var(--cl-ink);
   min-height: 100vh;
+}
+
+body,
+* {
+  font-family: "Segoe UI", Arial, sans-serif;
 }
 
 .bg-shape {
@@ -205,22 +210,23 @@ h1 {
   .card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .competidores-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .competidores-map {
+    min-height: 300px;
+    height: 300px;
+  }
 }
 
 #kpiCards {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 #kpiCards .kpi-card {
-  grid-column: span 2;
-}
-
-#kpiCards .kpi-card:nth-child(4) {
-  grid-column: 2 / span 2;
-}
-
-#kpiCards .kpi-card:nth-child(5) {
-  grid-column: 4 / span 2;
+  grid-column: auto;
 }
 
 @media (max-width: 1024px) {
@@ -229,8 +235,7 @@ h1 {
   }
 
   #kpiCards .kpi-card,
-  #kpiCards .kpi-card:nth-child(4),
-  #kpiCards .kpi-card:nth-child(5) {
+  #kpiCards .kpi-card:nth-child(4) {
     grid-column: auto;
   }
 }
@@ -239,11 +244,12 @@ h1 {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 2rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .kpi-forecast-main {
   min-height: 0;
+  height: 100%;
 }
 
 .kpi-forecast-insights {
@@ -254,7 +260,8 @@ h1 {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  align-self: start;
+  align-self: stretch;
+  height: 100%;
 }
 
 .kpi-forecast-insights .panel-title-wrap {
@@ -273,12 +280,17 @@ h1 {
   gap: 0.28rem;
 }
 
+.kpi-card.kpi-card-accent {
+  background: #e8f5ee;
+}
+
 .kpi-card h4 {
   margin: 0;
   font-size: 0.98rem;
   color: var(--cl-ink);
   line-height: 1.2;
   min-height: 0;
+  font-weight: 700;
 }
 
 .kpi-head {
@@ -298,7 +310,7 @@ h1 {
   background: #f5fbf7;
   color: #046f31;
   font-size: 0.62rem;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1;
   padding: 0.2rem 0.44rem;
 }
@@ -311,6 +323,11 @@ h1 {
   line-height: 1.25;
   word-break: break-word;
   text-align: center;
+}
+
+.kpi-card .value strong,
+.kpi-card .kpi-subvalue strong {
+  font-weight: 400;
 }
 
 .kpi-card .kpi-subvalue {
@@ -732,7 +749,8 @@ h1 {
 .serie-insight-metric-card span {
   display: block;
   font-size: 0.72rem;
-  color: #5a7283;
+  color: #1a6b3a;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -740,7 +758,8 @@ h1 {
   display: block;
   margin-top: 0.14rem;
   font-size: 0.84rem;
-  color: #163748;
+  color: #111111;
+  font-weight: 400;
   line-height: 1.25;
 }
 
@@ -787,6 +806,11 @@ h1 {
   border-radius: 10px;
   padding: 0.75rem 1rem;
   margin-bottom: 0.75rem;
+}
+
+.serie-insight-frame.serie-insight-neutral {
+  background: #ffffff;
+  border-color: #dbe6ef;
 }
 
 .serie-insight-frame:last-child {
@@ -869,8 +893,8 @@ canvas {
 
 .serie-plot {
   width: 100%;
-  min-height: 520px;
-  height: 520px;
+  min-height: 300px;
+  height: 300px;
 }
 
 .kpi-estados-map {
@@ -882,6 +906,14 @@ canvas {
 
 .competidores-panel {
   min-height: 0;
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 0.72rem;
+  align-items: start;
+}
+
+.competidores-panel .panel-title-wrap {
+  grid-column: 1 / -1;
 }
 
 .competidores-grid {
@@ -891,8 +923,10 @@ canvas {
 }
 
 .competidores-map {
-  margin-top: 0.65rem;
-  height: 300px;
+  margin-top: 0;
+  align-self: stretch;
+  min-height: 320px;
+  height: 100%;
 }
 
 .competidor-card {
@@ -956,14 +990,16 @@ canvas {
 #tab-kpis,
 #tab-empresas,
 #tab-riesgos,
-#tab-clustering {
+#tab-clustering,
+#tab-viabilidad {
   gap: 1.15rem;
 }
 
 #tab-kpis .panel,
 #tab-empresas .panel,
 #tab-riesgos .panel,
-#tab-clustering .panel {
+#tab-clustering .panel,
+#tab-viabilidad .panel {
   min-height: 0;
   border-radius: 18px;
   padding: 1.2rem;
@@ -974,10 +1010,15 @@ canvas {
   padding: 1.5rem;
 }
 
+#tab-kpis .kpi-forecast-main {
+  padding: 1.2rem;
+}
+
 #tab-kpis .panel-title-wrap h3,
 #tab-empresas .panel-title-wrap h3,
 #tab-riesgos .panel-title-wrap h3,
-#tab-clustering .panel-title-wrap h3 {
+#tab-clustering .panel-title-wrap h3,
+#tab-viabilidad .panel-title-wrap h3 {
   color: #1a6b3a;
   font-size: 1.2rem;
   font-weight: 800;
@@ -993,7 +1034,8 @@ canvas {
 #tab-kpis .panel-title-wrap p,
 #tab-empresas .panel-title-wrap p,
 #tab-riesgos .panel-title-wrap p,
-#tab-clustering .panel-title-wrap p {
+#tab-clustering .panel-title-wrap p,
+#tab-viabilidad .panel-title-wrap p {
   margin-top: 0.3rem;
   color: #355264;
 }
@@ -1003,7 +1045,28 @@ canvas {
   border-radius: 14px;
   background: #f8fdf9;
   padding: 0.72rem 0.8rem;
-  margin-bottom: 0.55rem;
+  margin: 0 0 0.55rem;
+  width: 100%;
+  max-width: none;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+#tab-kpis .kpi-toolbar .filter-wrap {
+  align-items: center;
+  justify-items: center;
+  text-align: center;
+}
+
+#tab-kpis .kpi-toolbar .filter-wrap span {
+  width: 100%;
+  text-align: center;
+}
+
+#tab-kpis .kpi-toolbar select {
+  text-align: center;
+  text-align-last: center;
 }
 
 #tab-kpis .kpi-card,
@@ -1046,10 +1109,18 @@ canvas {
   color: #ffffff;
 }
 
-.propuesta-hero-metrics {
+.kpi-cards-wrapper {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.propuesta-hero-metrics {
+  margin: 0;
 }
 
 .propuesta-hero-metric {
@@ -1098,14 +1169,32 @@ canvas {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.propuesta-prospect-list-estrategico {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .propuesta-prospect-list-single {
   grid-template-columns: 1fr !important;
-  justify-items: center;
+  justify-items: stretch;
 }
 
 .propuesta-prospect-list-single .propuesta-prospect-card {
   width: 100%;
   max-width: 100%;
+}
+
+.propuesta-prospect-total-box {
+  margin-top: 0.64rem;
+  border: 1px solid #d9e6dd;
+  border-left: 6px solid #2e8f4f;
+  border-radius: 12px;
+  background: #f6fbf8;
+  color: #1a6b3a;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.25;
+  padding: 0.72rem 0.9rem;
+  text-align: center;
 }
 
 .propuesta-prospect-card {
@@ -1282,6 +1371,11 @@ canvas {
 .propuesta-plan-companies {
   font-weight: 600;
   color: #355264;
+  text-align: center;
+}
+
+.propuesta-plan-column > h4 {
+  text-align: center;
 }
 
 .propuesta-plan-separator {
@@ -1316,6 +1410,9 @@ canvas {
   margin-top: auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  align-self: center;
+  text-align: center;
   border: 1px solid #cfe2d6;
   border-radius: 999px;
   background: #ffffff;
@@ -2615,8 +2712,7 @@ li {
   }
 
   #kpiCards .kpi-card,
-  #kpiCards .kpi-card:nth-child(4),
-  #kpiCards .kpi-card:nth-child(5) {
+  #kpiCards .kpi-card:nth-child(4) {
     grid-column: auto;
   }
 
@@ -2625,8 +2721,8 @@ li {
   }
 
   .serie-plot {
-    min-height: 380px;
-    height: 380px;
+    min-height: 240px;
+    height: 240px;
   }
 
   #clusterScatterPlot,
@@ -2666,6 +2762,10 @@ li {
   .propuesta-prospect-list,
   .propuesta-viabilidad-grid,
   .propuesta-why-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-cards-wrapper {
     grid-template-columns: 1fr;
   }
 

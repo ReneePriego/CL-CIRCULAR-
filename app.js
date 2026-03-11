@@ -435,7 +435,201 @@ const state = {
   infraCrucesMarkers: [],
   propuestaCoverageMap: null,
   competidoresMap: null,
+  viabilidadScenario: "Base",
 };
+
+const VIAB_COLORS = {
+  dark: "#1a6b3a",
+  mid: "#2e8f4f",
+  light: "#f1f8f3",
+  lightB: "#cfe2d6",
+  orange: "#8fcda2",
+  red: "#1a6b3a",
+  yellow: "#2e8f4f",
+  gray: "#355264",
+  grayL: "#f8fcf9",
+  grayB: "#d8e7de",
+  text: "#173b2a",
+  textMid: "#355264",
+  textDim: "#406277",
+  white: "#ffffff",
+};
+
+const VIAB_RISK_COLORS = { CRITICO: "#1a6b3a", ALTO: "#2e8f4f", MODERADO: "#8fcda2" };
+
+const VIAB_PL_BASE = [
+  { yr: "2026", rev: 98515, cogs: 15869, opex: 67000, ebitda: 15646, ni: -8000, fcf: -54000, ebm: 15.9, nm: -8.1, viajes: 3069 },
+  { yr: "2027", rev: 224919, cogs: 37238, opex: 55000, ebitda: 132681, ni: 52000, fcf: 108000, ebm: 59.0, nm: 23.1, viajes: 7203 },
+  { yr: "2028", rev: 231667, cogs: 38355, opex: 51290, ebitda: 142022, ni: 59000, fcf: 115000, ebm: 61.3, nm: 25.5, viajes: 7419 },
+  { yr: "2029", rev: 238617, cogs: 39506, opex: 52829, ebitda: 146282, ni: 61000, fcf: 119000, ebm: 61.3, nm: 25.6, viajes: 7641 },
+  { yr: "2030", rev: 245776, cogs: 40691, opex: 54414, ebitda: 150671, ni: 63000, fcf: 98000, ebm: 61.3, nm: 25.6, viajes: 7870 },
+  { yr: "2031", rev: 253149, cogs: 41912, opex: 56046, ebitda: 155191, ni: 65000, fcf: 126000, ebm: 61.3, nm: 25.7, viajes: 8106 },
+  { yr: "2032", rev: 260743, cogs: 43169, opex: 57727, ebitda: 159847, ni: 67000, fcf: 130000, ebm: 61.3, nm: 25.7, viajes: 8349 },
+  { yr: "2033", rev: 268565, cogs: 44464, opex: 59459, ebitda: 164642, ni: 69000, fcf: 134000, ebm: 61.3, nm: 25.7, viajes: 8600 },
+  { yr: "2034", rev: 276622, cogs: 45798, opex: 61243, ebitda: 169581, ni: 71000, fcf: 103000, ebm: 61.3, nm: 25.7, viajes: 8858 },
+  { yr: "2035", rev: 285000, cogs: 47172, opex: 63080, ebitda: 174748, ni: 73000, fcf: 141000, ebm: 61.3, nm: 25.6, viajes: 9123 },
+];
+const VIAB_PL_CONS = VIAB_PL_BASE.map((d) => ({
+  ...d,
+  rev: Math.round(d.rev * 0.8),
+  ebitda: Math.round(d.ebitda * 0.55),
+  ni: Math.round(d.ni * 0.6),
+}));
+const VIAB_PL_OPT = VIAB_PL_BASE.map((d) => ({
+  ...d,
+  rev: Math.round(d.rev * 1.2),
+  ebitda: Math.round(d.ebitda * 1.25),
+  ni: Math.round(d.ni * 1.3),
+}));
+const VIAB_CUM_B = [-54, -8, 107, 226, 324, 450, 580, 714, 817, 958];
+const VIAB_CUM_C = [-54, -34, 30, 90, 148, 206, 264, 328, 372, 430];
+const VIAB_CUM_O = [-54, 82, 230, 390, 530, 710, 900, 1100, 1250, 1500];
+const VIAB_CUM_CHART = VIAB_PL_BASE.map((d, i) => ({
+  yr: d.yr,
+  Base: VIAB_CUM_B[i],
+  Conservador: VIAB_CUM_C[i],
+  Optimista: VIAB_CUM_O[i],
+}));
+
+const VIAB_CLIENTS_Y1 = [
+  {
+    rank: 1,
+    name: "Baja Aqua-Farms",
+    tier: "Ancla",
+    mes: 88,
+    viajes: 1060,
+    precio: 30,
+    rev: 31800,
+    devices: 88,
+    risk: "CRITICO",
+    q: "Q1 2026",
+    sede: "Ensenada, BC",
+    cruce: "Otay Mesa",
+  },
+  {
+    rank: 2,
+    name: "Grupo Acuicola Mex.",
+    tier: "Ancla",
+    mes: 60,
+    viajes: 720,
+    precio: 30,
+    rev: 21600,
+    devices: 60,
+    risk: "ALTO",
+    q: "Q1 2026",
+    sede: "Mazatlan, SIN",
+    cruce: "Nogales",
+  },
+  {
+    rank: 3,
+    name: "Grupo Pinsa",
+    tier: "Estrategico",
+    mes: 43,
+    viajes: 513,
+    precio: 35,
+    rev: 17955,
+    devices: 43,
+    risk: "MODERADO",
+    q: "Q2 2026",
+    sede: "Mazatlan, SIN",
+    cruce: "Nogales/Laredo",
+  },
+  {
+    rank: 4,
+    name: "Baja Shellfish Farms",
+    tier: "Estrategico",
+    mes: 40,
+    viajes: 480,
+    precio: 35,
+    rev: 16800,
+    devices: 40,
+    risk: "CRITICO",
+    q: "Q2 2026",
+    sede: "Ensenada, BC",
+    cruce: "Otay Mesa",
+  },
+  {
+    rank: 5,
+    name: "Pacifico Aquaculture",
+    tier: "Estrategico",
+    mes: 25,
+    viajes: 296,
+    precio: 35,
+    rev: 10360,
+    devices: 25,
+    risk: "ALTO",
+    q: "Q3 2026",
+    sede: "Ensenada, BC",
+    cruce: "Otay Mesa",
+  },
+];
+const VIAB_CLIENTS_Y2 = [
+  { rank: 6, name: "Pesquera Asia", tier: "Ancla", mes: 107, viajes: 1284, precio: 30, rev: 38520 },
+  { rank: 7, name: "Com. Mexico Americana", tier: "Ancla", mes: 81, viajes: 974, precio: 30, rev: 29220 },
+  { rank: 8, name: "Import. Esp. Angelion", tier: "Ancla", mes: 57, viajes: 684, precio: 30, rev: 20520 },
+  { rank: 9, name: "Quality Fish", tier: "Estrategico", mes: 50, viajes: 596, precio: 32, rev: 19072 },
+  { rank: 10, name: "Punto Austral", tier: "Estrategico", mes: 50, viajes: 596, precio: 32, rev: 19072 },
+];
+const VIAB_INVESTMENT = [
+  { label: "Personal Año 1", monto: 25000, pct: 32 },
+  { label: "Legal & Fiscal (SAT)", monto: 15000, pct: 19, warn: true },
+  { label: "Infraestructura Mazatlan", monto: 12000, pct: 16 },
+  { label: "Capital de trabajo", monto: 10000, pct: 13 },
+  { label: "Flota sensores (256x$35)", monto: 8960, pct: 12 },
+  { label: "Comercial & Marketing", monto: 6000, pct: 8 },
+];
+const VIAB_AMORT = [
+  { mes: "Ene", saldo: 31000, interes: 413, capital: 0 },
+  { mes: "Feb", saldo: 68000, interes: 907, capital: 0 },
+  { mes: "Mar", saldo: 76460, interes: 1027, capital: 500 },
+  { mes: "Abr", saldo: 75360, interes: 1019, capital: 1100 },
+  { mes: "May", saldo: 74160, interes: 1005, capital: 1200 },
+  { mes: "Jun", saldo: 72860, interes: 989, capital: 1300 },
+  { mes: "Jul", saldo: 71360, interes: 971, capital: 1500 },
+  { mes: "Ago", saldo: 69660, interes: 951, capital: 1700 },
+  { mes: "Sep", saldo: 67760, interes: 929, capital: 1900 },
+  { mes: "Oct", saldo: 65660, interes: 903, capital: 2100 },
+  { mes: "Nov", saldo: 63360, interes: 875, capital: 2300 },
+  { mes: "Dic", saldo: 60760, interes: 845, capital: 2600 },
+];
+const VIAB_FISCAL = VIAB_CLIENTS_Y1.map((c) => ({
+  name: c.name.split(" ")[0],
+  memb: c.rev,
+  art189: Math.round(c.rev * 0.3),
+  art25: Math.round(c.rev * 0.21),
+  recup: Math.round(c.rev * 0.51),
+  neto: Math.round(c.rev * 0.49),
+}));
+
+const VIAB_FCF_STREAM = [-76960, 15646, 132681, 142022, 129636, 155191, 159847, 164642, 148546, 174748];
+
+function viabCalcIRR(cashflows, guess = 0.1) {
+  let rate = guess;
+  for (let i = 0; i < 200; i += 1) {
+    let npv = 0;
+    let dnpv = 0;
+    cashflows.forEach((cf, t) => {
+      npv += cf / Math.pow(1 + rate, t);
+      dnpv -= (t * cf) / Math.pow(1 + rate, t + 1);
+    });
+    if (!Number.isFinite(dnpv) || dnpv === 0) break;
+    const next = rate - npv / dnpv;
+    if (!Number.isFinite(next)) break;
+    if (Math.abs(next - rate) < 1e-8) return next;
+    rate = next;
+  }
+  return rate;
+}
+
+function viabCalcNPV(cashflows, rate) {
+  return cashflows.reduce((sum, cf, t) => sum + cf / Math.pow(1 + rate, t), 0);
+}
+
+const VIAB_IRR_BASE = viabCalcIRR(VIAB_FCF_STREAM);
+const VIAB_NPV_NAFIN = viabCalcNPV(VIAB_FCF_STREAM, 0.16);
+const VIAB_NPV_10 = viabCalcNPV(VIAB_FCF_STREAM, 0.1);
+const VIAB_OPEX_R_Y1 = ((67000 / 98515) * 100).toFixed(1);
+const VIAB_OPEX_R_Y2 = ((55000 / 224919) * 100).toFixed(1);
 
 const CBP_CACHE_TTL_MS = 5 * 60 * 1000;
 const CBP_ENDPOINTS = ["https://bwt.cbp.gov/api/waittimes", "https://bwt.cbp.gov/api/bwt"];
@@ -1014,6 +1208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     renderEmpresas();
     renderPropuestaTab();
+    renderViabilidadTab();
     initInfraKpi();
     initRiesgos();
   } catch (error) {
@@ -2384,6 +2579,38 @@ function getCompetidorTipoColor(tipo = "") {
   return "#2e8f4f";
 }
 
+function getCompetidorEmpresaColor(empresa = "", fallbackIndex = 0) {
+  const palette = [
+    "#1a6b3a",
+    "#0f4c81",
+    "#c2410c",
+    "#7c3aed",
+    "#b91c1c",
+    "#0f766e",
+    "#1d4ed8",
+    "#a16207",
+    "#be185d",
+    "#334155",
+  ];
+  return palette[Math.abs(Number(fallbackIndex) || 0) % palette.length];
+}
+
+function buildCompetidorColorMap(rows = []) {
+  const uniqueKeys = Array.from(
+    new Set(
+      (rows || [])
+        .map((item) => normalizeGeoKey(item?.empresa || item?.sede || item?.tipo || ""))
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const colorByKey = new Map();
+  uniqueKeys.forEach((key, idx) => {
+    colorByKey.set(key, getCompetidorEmpresaColor(key, idx));
+  });
+  return colorByKey;
+}
+
 function initCompetidoresMap() {
   const mapEl = document.getElementById("competidoresMap");
   if (!mapEl || typeof L === "undefined" || !competidoresData.length) return;
@@ -2400,8 +2627,9 @@ function initCompetidoresMap() {
 
   const bounds = [];
   const coordCount = new Map();
+  const colorByEmpresa = buildCompetidorColorMap(competidoresData);
 
-  competidoresData.forEach((item) => {
+  competidoresData.forEach((item, idx) => {
     const base = inferCoordsByCompetidor(item);
     const key = `${base.lat.toFixed(3)},${base.lng.toFixed(3)}`;
     const seen = coordCount.get(key) || 0;
@@ -2411,7 +2639,8 @@ function initCompetidoresMap() {
     const angle = seen * 2.2;
     const lat = base.lat + (seen ? Math.sin(angle) * jitterStep : 0);
     const lng = base.lng + (seen ? Math.cos(angle) * jitterStep : 0);
-    const color = getCompetidorTipoColor(item.tipo || "");
+    const companyKey = normalizeGeoKey(item.empresa || item.sede || item.tipo || "");
+    const color = colorByEmpresa.get(companyKey) || getCompetidorEmpresaColor(companyKey, idx);
 
     const popup = `
       <div class="infra-popup">
@@ -4529,6 +4758,9 @@ function initTabs() {
       if (tab === "propuesta") {
         renderPropuestaTab();
       }
+      if (tab === "viabilidad") {
+        renderViabilidadTab();
+      }
       if (tab === "clustering") {
         renderClustering();
       }
@@ -6044,22 +6276,1018 @@ function buildPropuestaProspect(empresa) {
 
 function renderPropuestaTab() {
   const fobEl = document.getElementById("propuestaHeroFobValue");
-  const ftlEl = document.getElementById("propuestaHeroFtlValue");
-  if (fobEl || ftlEl) {
+  if (fobEl) {
     const fob2024 = getFobValueByYear(2024);
     const fobText = Number.isFinite(fob2024) ? `$${Math.floor(fob2024).toLocaleString("es-MX")}M USD` : "$776M USD";
-    if (fobEl) fobEl.textContent = fobText;
-    if (ftlEl) {
-      ftlEl.textContent = "3,070";
-      const middleLabelEl = ftlEl.parentElement?.querySelector(".propuesta-hero-label");
-      if (middleLabelEl) middleLabelEl.textContent = "viajes/año";
-    }
+    fobEl.textContent = fobText;
   }
+  ensurePropuestaValorSection();
   syncPropuestaProspectsLocations();
   syncPropuestaPlanClusters();
   initPropuestaCoverageMap();
   bindPropuestaProspectButtons();
   bindPropuestaViabilidadButton();
+}
+
+function ensurePropuestaValorStyles() {
+  if (document.getElementById("propuestaValorStyles")) return;
+  const style = document.createElement("style");
+  style.id = "propuestaValorStyles";
+  style.textContent = `
+    .propuesta-valor-coverage-wrap{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:0.72rem;
+      align-items:stretch;
+    }
+    .propuesta-valor-coverage-wrap .propuesta-section{
+      margin:0;
+    }
+    .propuesta-valor-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:0.52rem;
+      align-items:stretch;
+    }
+    @media (max-width:1100px){
+      .propuesta-valor-coverage-wrap{
+        grid-template-columns:1fr;
+      }
+    }
+    @media (max-width:900px){
+      .propuesta-valor-grid{grid-template-columns:1fr}
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function buildPropuestaValorHtml() {
+  return `
+    <h3 class="propuesta-section-title">Propuesta de valor</h3>
+    <div class="propuesta-valor-grid">
+      <div class="propuesta-implementation-card propuesta-plan-phase">
+        <h4>📋 Cumplimiento FSMA 204</h4>
+        <p>Cada viaje genera un registro térmico certificado por ENAC — la documentación que el importador en EE.UU. exige desde enero 2026.</p>
+      </div>
+      <div class="propuesta-implementation-card propuesta-plan-phase">
+        <h4>⚠️ Mitigación de riesgo real</h4>
+        <p>Un rechazo en frontera supera el costo anual del servicio. CLCircular convierte ese riesgo en un certificado automático por viaje.</p>
+      </div>
+      <div class="propuesta-implementation-card propuesta-plan-phase">
+        <h4>🔄 Modelo sin fricción</h4>
+        <p>Sin inversión inicial. Sin configuración. Pago por viaje monitoreado — el exportador paga por resultado, no por hardware.</p>
+      </div>
+    </div>
+  `;
+}
+
+function ensurePropuestaValorSection() {
+  const tab = document.getElementById("tab-propuesta");
+  if (!tab) return;
+  ensurePropuestaValorStyles();
+  const planSection = tab.querySelector(".propuesta-plan");
+  const coverageSection = tab.querySelector(".propuesta-coverage");
+  let valorSection = document.getElementById("propuestaValorSection");
+  let wrap = document.getElementById("propuestaValorCoverageWrap");
+
+  if (!valorSection) {
+    valorSection = document.createElement("article");
+    valorSection.id = "propuestaValorSection";
+    valorSection.className = "panel propuesta-section propuesta-valor";
+    valorSection.innerHTML = buildPropuestaValorHtml();
+  } else {
+    valorSection.innerHTML = buildPropuestaValorHtml();
+  }
+
+  if (coverageSection) {
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.id = "propuestaValorCoverageWrap";
+      wrap.className = "propuesta-valor-coverage-wrap";
+    }
+    if (planSection) {
+      tab.insertBefore(wrap, planSection);
+    } else if (!wrap.parentElement) {
+      tab.appendChild(wrap);
+    }
+    wrap.appendChild(coverageSection);
+    wrap.appendChild(valorSection);
+    return;
+  }
+
+  if (planSection) {
+    tab.insertBefore(valorSection, planSection);
+  } else if (!valorSection.parentElement) {
+    tab.appendChild(valorSection);
+  }
+}
+
+function getViabilidadScenarioData() {
+  const current = state.viabilidadScenario;
+  if (current === "Conservador") return VIAB_PL_CONS;
+  if (current === "Optimista") return VIAB_PL_OPT;
+  return VIAB_PL_BASE;
+}
+
+function viabFormatMoney(value) {
+  return `$${Math.abs(Number(value) || 0).toLocaleString("es-MX")}`;
+}
+
+function viabFormatK(value) {
+  const num = Math.round(Math.abs(Number(value) || 0) / 1000);
+  return `$${num.toLocaleString("es-MX")}K`;
+}
+
+function viabFormatSignedK(value) {
+  const num = Number(value) || 0;
+  const absK = Math.round(Math.abs(num) / 1000).toLocaleString("es-MX");
+  return `${num < 0 ? "-" : ""}$${absK}K`;
+}
+
+function viabFormatInt(value) {
+  return Math.round(Math.abs(Number(value) || 0)).toLocaleString("es-MX");
+}
+
+function viabRiskClass(level = "") {
+  const normalized = normalizeHeader(level).toUpperCase();
+  if (normalized.includes("CRIT")) return "critico";
+  if (normalized.includes("ALTO")) return "alto";
+  if (normalized.includes("MOD")) return "moderado";
+  return "moderado";
+}
+
+function viabScenarioButtonsHtml(current) {
+  return ["Base", "Conservador", "Optimista"]
+    .map(
+      (label) =>
+        `<button class="viab-scenario-btn${label === current ? " is-active" : ""}" type="button" data-viab-scenario="${label}">${label}</button>`,
+    )
+    .join("");
+}
+
+function viabRenderPnlTableRows(data) {
+  const rows = [
+    { label: "Revenue total", key: "rev", fmt: (v) => viabFormatK(v) },
+    { label: "(-) COGS", key: "cogs", fmt: (v) => `(${viabFormatK(v)})` },
+    { label: "Utilidad Bruta", custom: (d) => viabFormatK((d.rev || 0) - (d.cogs || 0)), highlight: true },
+    { label: "(-) OPEX", key: "opex", fmt: (v) => `(${viabFormatK(v)})` },
+    { label: "EBITDA", key: "ebitda", fmt: (v) => viabFormatK(v), highlight: true },
+    { label: "Margen EBITDA", key: "ebm", fmt: (v) => `${Number(v || 0).toFixed(1)}%` },
+    {
+      label: "Utilidad Neta",
+      key: "ni",
+      fmt: (v) => {
+        const num = Number(v) || 0;
+        return num >= 0 ? viabFormatK(num) : `(${viabFormatK(Math.abs(num))})`;
+      },
+      highlight: true,
+      negative: true,
+    },
+    { label: "Margen Neto", key: "nm", fmt: (v) => `${Number(v || 0).toFixed(1)}%` },
+    { label: "Viajes", key: "viajes", fmt: (v) => viabFormatInt(v) },
+  ];
+
+  return rows
+    .map((row) => {
+      const cells = data
+        .map((item) => {
+          const raw = row.custom ? row.custom(item) : row.fmt(item[row.key]);
+          const negClass = row.negative && Number(item[row.key]) < 0 ? " viab-neg" : "";
+          return `<td class="${negClass.trim()}">${raw}</td>`;
+        })
+        .join("");
+      return `<tr class="${row.highlight ? "viab-highlight-row" : ""}"><td>${row.label}</td>${cells}</tr>`;
+    })
+    .join("");
+}
+
+function viabRenderClientsYear1() {
+  return VIAB_CLIENTS_Y1.map((c) => {
+    const riskColor = VIAB_RISK_COLORS[c.risk] || VIAB_COLORS.yellow;
+    return `
+      <div class="viab-client-card" style="border-left-color:${riskColor}">
+        <div class="viab-client-head">
+          <div>
+            <strong>${escapeHtml(c.name)}</strong>
+            <span class="viab-tier-badge">${escapeHtml(c.tier)}</span>
+            <span class="viab-risk-badge viab-risk-${viabRiskClass(c.risk)}">${escapeHtml(c.risk === "CRITICO" ? "CRÍTICO" : c.risk)}</span>
+          </div>
+          <span class="viab-client-quarter">${escapeHtml(c.q)}</span>
+        </div>
+        <div class="viab-client-meta">${viabFormatInt(c.mes)} DUA/mes · ${escapeHtml(c.sede)} · ${escapeHtml(c.cruce)}</div>
+        <div class="viab-client-foot">
+          <span>$${viabFormatInt(c.precio)}/viaje · ${viabFormatInt(c.devices)} sensores</span>
+          <strong>${viabFormatMoney(c.rev)}/año</strong>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function viabRenderClientsYear2() {
+  return VIAB_CLIENTS_Y2.map(
+    (c) => `
+      <div class="viab-client-card is-muted">
+        <div class="viab-client-head">
+          <div>
+            <strong>${escapeHtml(c.name)}</strong>
+            <span class="viab-tier-badge">${escapeHtml(c.tier)}</span>
+          </div>
+          <strong>${viabFormatMoney(c.rev)}/año</strong>
+        </div>
+        <div class="viab-client-meta">${viabFormatInt(c.mes)} DUA/mes · $${viabFormatInt(c.precio)}/viaje</div>
+      </div>
+    `,
+  ).join("");
+}
+
+function viabRenderMembershipBars() {
+  const maxRev = Math.max(...VIAB_CLIENTS_Y1.map((c) => c.rev));
+  return VIAB_CLIENTS_Y1.map((c) => {
+    const tierColor = VIAB_COLORS.dark;
+    const width = maxRev > 0 ? Math.round((c.rev / maxRev) * 100) : 0;
+    const margin = ((c.precio - 5.17) / c.precio) * 100;
+    return `
+      <div class="viab-membership-bar-row">
+        <div class="viab-membership-bar-head">
+          <span>
+            <strong>${escapeHtml(c.name)}</strong>
+            <span class="viab-chip" style="color:${tierColor};border-color:${tierColor}44;background:${tierColor}18">
+              ${escapeHtml(c.tier)} · $${viabFormatInt(c.precio)}/viaje
+            </span>
+          </span>
+          <strong>${viabFormatMoney(c.rev)}</strong>
+        </div>
+        <div class="viab-membership-track">
+          <div class="viab-membership-fill" style="width:${width}%;background:${tierColor}"></div>
+        </div>
+        <div class="viab-membership-caption">${viabFormatInt(c.viajes)} viajes/año · ${viabFormatInt(c.mes)} DUA/mes · margen bruto ${margin.toFixed(1)}%</div>
+      </div>
+    `;
+  }).join("");
+}
+
+function viabRenderInvestmentBars() {
+  return VIAB_INVESTMENT.map(
+    (item) => `
+      <div class="viab-progress-row">
+        <div class="viab-progress-head">
+          <span>${escapeHtml(item.label)}</span>
+          <span class="${item.warn ? "is-warn" : ""}">${viabFormatMoney(item.monto)} <small>(${item.pct}%)</small></span>
+        </div>
+        <div class="viab-progress-track">
+          <div class="viab-progress-fill ${item.warn ? "is-warn" : ""}" style="width:${item.pct}%"></div>
+        </div>
+      </div>
+    `,
+  ).join("");
+}
+
+function viabRenderDrawdownBars() {
+  const drawdowns = [
+    { mes: "Mes 1", desc: "Legal + Capital de trabajo + Mktg", monto: 31000, pct: 40 },
+    { mes: "Mes 2", desc: "Personal + Hub Mazatlan", monto: 37000, pct: 48 },
+    { mes: "Mes 3", desc: "Flota sensores (256 x $35)", monto: 8960, pct: 12 },
+  ];
+
+  return drawdowns
+    .map(
+      (t) => `
+      <div class="viab-progress-row">
+        <div class="viab-progress-head">
+          <span><strong>${t.mes}</strong> · ${t.desc}</span>
+          <strong>${viabFormatMoney(t.monto)}</strong>
+        </div>
+        <div class="viab-progress-track">
+          <div class="viab-progress-fill" style="width:${t.pct}%"></div>
+        </div>
+      </div>
+    `,
+    )
+    .join("");
+}
+
+function viabRenderCostoNetoRows() {
+  const rows = VIAB_CLIENTS_Y1.map((c) => {
+    const recup = Math.round(c.rev * 0.51);
+    const neto = c.rev - recup;
+    const npv = neto / c.viajes;
+    const ahorro = Math.round((27.5 - npv) * c.viajes);
+    return `
+      <tr>
+        <td>${escapeHtml(c.name.split(" ")[0])}</td>
+        <td>${viabFormatMoney(c.rev)}</td>
+        <td class="viab-positive">${viabFormatMoney(recup)}</td>
+        <td class="viab-strong">$${npv.toFixed(2)}/viaje</td>
+        <td class="viab-positive">+${viabFormatMoney(ahorro)}</td>
+      </tr>
+    `;
+  }).join("");
+
+  return `${rows}<tr class="viab-highlight-row"><td>TOTAL</td><td>$98,515</td><td>$50,243</td><td>$48,272</td><td>Argumento de ventas</td></tr>`;
+}
+
+function viabRenderScenariosCards() {
+  const cards = [
+    {
+      name: "Base",
+      color: VIAB_COLORS.dark,
+      rev: "$285K",
+      ebm: "61.3%",
+      ni: "$73K",
+      cum: "$958K",
+      pb: "9 meses",
+      desc: "3% crec. · retención 100% · pérdida 5%",
+    },
+    {
+      name: "Conservador",
+      color: VIAB_COLORS.orange,
+      rev: "$198K",
+      ebm: "47.9%",
+      ni: "$38K",
+      cum: "$430K",
+      pb: "18 meses",
+      desc: "1.5% crec. · churn 20% · costos ×1.15",
+    },
+    {
+      name: "Optimista",
+      color: VIAB_COLORS.mid,
+      rev: "$398K",
+      ebm: "64.8%",
+      ni: "$95K",
+      cum: "$1.5M",
+      pb: "7 meses",
+      desc: "5% crec. · retención 100% · costos ×0.90",
+    },
+  ];
+
+  return cards
+    .map(
+      (s) => `
+      <div class="viab-scenario-card" style="border-top-color:${s.color}">
+        <div class="viab-scenario-name" style="color:${s.color}">${s.name}</div>
+        <div class="viab-scenario-kv"><span>Revenue Año 10</span><strong style="color:${s.color}">${s.rev}</strong></div>
+        <div class="viab-scenario-kv"><span>Margen EBITDA</span><strong style="color:${s.color}">${s.ebm}</strong></div>
+        <div class="viab-scenario-kv"><span>Utilidad Neta</span><strong style="color:${s.color}">${s.ni}</strong></div>
+        <div class="viab-scenario-kv"><span>FCF Acumulado</span><strong style="color:${s.color}">${s.cum}</strong></div>
+        <div class="viab-scenario-kv"><span>Payback</span><strong style="color:${s.color}">${s.pb}</strong></div>
+        <p class="viab-scenario-desc">${s.desc}</p>
+      </div>
+    `,
+    )
+    .join("");
+}
+
+function viabRenderIndicadoresSection() {
+  const irrValue = Number.isFinite(VIAB_IRR_BASE) ? `${(VIAB_IRR_BASE * 100).toFixed(1)}%` : "N/D";
+  const npvNafinPositive = VIAB_NPV_NAFIN >= 0;
+  const rentabilidad = [
+    {
+      l: "TIR (IRR)",
+      v: irrValue,
+      s: "Sobre FCF 10 años",
+      badge: "EXCELENTE",
+      bc: VIAB_COLORS.dark,
+      color: VIAB_COLORS.dark,
+      note: "Supera ampliamente el costo de capital (16%).",
+    },
+    {
+      l: "VPN @ WACC 16%",
+      v: viabFormatSignedK(VIAB_NPV_NAFIN),
+      s: "Tasa NAFIN",
+      badge: npvNafinPositive ? "POSITIVO" : "NEGATIVO",
+      bc: npvNafinPositive ? VIAB_COLORS.dark : VIAB_COLORS.red,
+      color: npvNafinPositive ? VIAB_COLORS.dark : VIAB_COLORS.red,
+      note: "VPN positivo = proyecto crea valor.",
+    },
+    {
+      l: "VPN @ 10%",
+      v: viabFormatSignedK(VIAB_NPV_10),
+      s: "Tasa alternativa",
+      badge: "REFERENCIA",
+      bc: VIAB_COLORS.mid,
+      color: VIAB_COLORS.mid,
+      note: "Escenario conservador de costo de capital.",
+    },
+    {
+      l: "ROI Año 1",
+      v: "128%",
+      s: "Revenue/inversión",
+      badge: "ALTO",
+      bc: VIAB_COLORS.dark,
+      color: VIAB_COLORS.dark,
+      note: "$98,515 revenue vs $76,960 inversión.",
+    },
+    {
+      l: "ROI Año 2",
+      v: "292%",
+      s: "Revenue acum./inv.",
+      badge: "MUY ALTO",
+      bc: VIAB_COLORS.dark,
+      color: VIAB_COLORS.dark,
+      note: "Revenue acumulado / inversión inicial.",
+    },
+    {
+      l: "Payback",
+      v: "~9 meses",
+      s: "FCF acumulado > 0",
+      badge: "RÁPIDO",
+      bc: VIAB_COLORS.mid,
+      color: VIAB_COLORS.mid,
+      note: "Recuperación antes de cierre de Año 1.",
+    },
+  ];
+
+  const eficiencia = [
+    { l: "Margen bruto/viaje", v: "~83%", s: "Precio $31 vs COGS $5.17", color: VIAB_COLORS.dark, bar: 83, warn: false },
+    { l: "Margen EBITDA Año 2", v: "59.0%", s: "$133K / $225K revenue", color: VIAB_COLORS.dark, bar: 59, warn: false },
+    { l: "Margen EBITDA Año 3+", v: "61.3%", s: "Plateau desde Año 3", color: VIAB_COLORS.mid, bar: 61.3, warn: false },
+    { l: "OPEX ratio Año 1", v: `${VIAB_OPEX_R_Y1}%`, s: "OPEX/Revenue", color: VIAB_COLORS.orange, bar: Number(VIAB_OPEX_R_Y1), warn: true },
+    { l: "OPEX ratio Año 2", v: `${VIAB_OPEX_R_Y2}%`, s: "Mejora eficiencia", color: VIAB_COLORS.mid, bar: Number(VIAB_OPEX_R_Y2), warn: true },
+    { l: "Rev./sensor Año 2", v: `$${viabFormatInt(Math.round(224919 / 601))}`, s: "USD por sensor activo", color: VIAB_COLORS.dark, bar: 75, warn: false },
+  ];
+
+  const waterfall = [
+    { l: "Revenue", v: "$224,919", pct: "100%", desc: "10 clientes activos", arrow: "", bg: VIAB_COLORS.light, color: VIAB_COLORS.dark },
+    { l: "(-) COGS", v: "-$37,238", pct: "16.6%", desc: "$5.17 × 7,203 viajes", arrow: "↓", bg: "#f5faf7", color: VIAB_COLORS.mid },
+    { l: "(-) OPEX", v: "-$55,000", pct: "24.5%", desc: "Personal + infra + admin", arrow: "↓", bg: "#eef7f1", color: VIAB_COLORS.mid },
+    { l: "= EBITDA", v: "$132,681", pct: "59.0%", desc: "Margen sobre revenue", arrow: "=", bg: VIAB_COLORS.light, color: VIAB_COLORS.dark },
+  ];
+
+  return `
+    <section class="viab-section">
+      <h3 class="viab-section-title">Indicadores financieros clave</h3>
+
+      <div class="viab-indicator-group">
+        <div class="viab-indicator-group-title">Rentabilidad y retorno</div>
+        <div class="viab-indicator-grid">
+          ${rentabilidad
+            .map(
+              (k) => `
+            <article class="viab-indicator-card">
+              <div class="viab-indicator-label">${k.l}</div>
+              <div class="viab-indicator-value" style="color:${k.color}">${k.v}</div>
+              <div class="viab-indicator-row">
+                <span>${k.s}</span>
+                <span class="viab-indicator-badge" style="color:${k.bc};border-color:${k.bc}33;background:${k.bc}18">${k.badge}</span>
+              </div>
+              <div class="viab-indicator-note">${k.note}</div>
+            </article>
+          `,
+            )
+            .join("")}
+        </div>
+      </div>
+
+      <div class="viab-indicator-group">
+        <div class="viab-indicator-group-title">Eficiencia operativa</div>
+        <div class="viab-indicator-grid">
+          ${eficiencia
+            .map(
+              (k) => `
+            <article class="viab-indicator-card">
+              <div class="viab-indicator-label">${k.l}</div>
+              <div class="viab-indicator-value" style="color:${k.color}">${k.v}</div>
+              <div class="viab-indicator-meter">
+                <div class="viab-indicator-meter-fill${k.warn ? " is-warn" : ""}" style="width:${Math.min(Number(k.bar) || 0, 100)}%"></div>
+              </div>
+              <div class="viab-indicator-note">${k.s}</div>
+            </article>
+          `,
+            )
+            .join("")}
+        </div>
+      </div>
+
+      <div class="viab-indicator-group" style="margin-bottom:0">
+        <div class="viab-indicator-group-title">Construcción del EBITDA — Año 2 (waterfall)</div>
+        <div class="viab-waterfall-grid">
+          ${waterfall
+            .map(
+              (k) => `
+            <article class="viab-waterfall-card" style="background:${k.bg}">
+              <div class="viab-waterfall-arrow">${k.arrow}</div>
+              <div class="viab-indicator-label">${k.l}</div>
+              <div class="viab-indicator-value" style="color:${k.color}">${k.v}</div>
+              <div class="viab-indicator-row"><span>${k.desc}</span><strong style="color:${k.color}">${k.pct}</strong></div>
+            </article>
+          `,
+            )
+            .join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function viabBuildStyles() {
+  return `
+    <style>
+      .viabilidad-panel{padding:1.2rem;border:0;background:transparent;box-shadow:none}
+      .viab-root{background:transparent;border:0;border-radius:0;padding:0;font-family:inherit;color:${VIAB_COLORS.textMid};display:flex;flex-direction:column;gap:1.15rem}
+      .viab-root *{font-family:inherit}
+      .viab-section{min-height:0;background:#fff;border:1px solid #d9e6dd;border-radius:18px;padding:1.2rem;margin-bottom:0}
+      .viab-banner{background:${VIAB_COLORS.dark};color:#fff;border:1px solid ${VIAB_COLORS.dark};border-radius:18px;min-height:0;padding:1.2rem;margin:0;width:auto}
+      .viab-banner-title{margin:0 0 0.85rem;font-size:clamp(1.15rem, 2.3vw, 1.55rem);line-height:1.1;font-weight:800;color:#ffffff}
+      .viab-banner-grid{width:100%;max-width:100%;margin:0 auto;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+      .viab-banner-card{border:1px solid rgba(255,255,255,0.26);border-radius:12px;background:rgba(255,255,255,0.08);padding:0.72rem 0.68rem;text-align:center}
+      .viab-banner-label{font-size:0.7rem;color:#d9f0df;letter-spacing:0.01em;margin-bottom:0.22rem}
+      .viab-banner-value{font-size:clamp(0.9rem, 1.7vw, 1.2rem);line-height:1.15;font-weight:800}
+      .viab-banner-sub{font-size:0.7rem;color:#d9f0df;letter-spacing:0.01em;margin-top:0.22rem}
+      .viab-kpi-grid{margin-bottom:16px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;width:100%}
+      .viab-kpi-card{background:#fff;border:1px solid #d9e6dd;border-radius:12px;padding:0.72rem 0.7rem;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+      .viab-kpi-card.is-accent{background:${VIAB_COLORS.light}}
+      .viab-kpi-card.kpi-recuperacion{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+      .viab-kpi-title{display:block;font-size:0.92rem;font-weight:800;color:#1a6b3a;margin:0 0 0.28rem;line-height:1.18;text-align:center}
+      .viab-kpi-title .viab-unit{display:block;width:max-content;margin:0.22rem auto 0}
+      .viab-unit{display:inline-block;background:#f1f8f3;color:#1a6b3a;border:1px solid #c9dece;border-radius:999px;padding:0.12rem 0.46rem;font-size:0.7rem;font-weight:700}
+      .viab-kpi-value{font-size:clamp(0.9rem, 1.7vw, 1.2rem);font-weight:400;line-height:1.15;color:#111111}
+      .viab-kpi-sub{font-size:0.79rem;color:#355264;margin-top:0.18rem}
+      .viab-section-title{margin:0 0 0.72rem;color:#1a6b3a;font-size:1.26rem;font-weight:800;line-height:1.2}
+      .viab-two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+      .viab-three-col{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+      .viab-scenario-controls{display:flex;gap:6px;flex-wrap:wrap}
+      .viab-scenario-btn{cursor:pointer;border:1.5px solid ${VIAB_COLORS.grayB};background:#fff;border-radius:999px;padding:4px 13px;font-size:11px;color:${VIAB_COLORS.textMid};font-weight:600}
+      .viab-scenario-btn:hover{border-color:${VIAB_COLORS.dark};color:${VIAB_COLORS.dark}}
+      .viab-scenario-btn.is-active{border-color:${VIAB_COLORS.dark};background:${VIAB_COLORS.dark};color:#fff}
+      .viab-table-wrap{overflow-x:auto}
+      .viab-table{border-collapse:collapse;width:100%}
+      .viab-table th{background:${VIAB_COLORS.grayL};color:${VIAB_COLORS.textDim};font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:7px 9px;text-align:right;border-bottom:1px solid ${VIAB_COLORS.grayB}}
+      .viab-table th:first-child,.viab-table td:first-child{text-align:left}
+      .viab-table td{font-size:11px;padding:6px 9px;text-align:right;border-bottom:1px solid ${VIAB_COLORS.grayB};color:${VIAB_COLORS.textMid}}
+      .viab-table tr:last-child td{border-bottom:none}
+      .viab-highlight-row td{color:${VIAB_COLORS.dark};font-weight:700;background:${VIAB_COLORS.light}!important}
+      .viab-neg{color:#dc2626!important}
+      .viab-note{margin-top:10px;padding:8px 12px;background:${VIAB_COLORS.light};border-radius:6px;font-size:11px;color:${VIAB_COLORS.dark}}
+      .viab-membership-bar-row{margin-bottom:10px}
+      .viab-membership-bar-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:3px;font-size:11px}
+      .viab-membership-track{height:5px;background:${VIAB_COLORS.grayB};border-radius:3px}
+      .viab-membership-fill{height:100%;border-radius:3px;opacity:.78}
+      .viab-membership-caption{font-size:10px;color:${VIAB_COLORS.textDim};margin-top:2px}
+      .viab-chip{display:inline-block;border:1px solid;border-radius:999px;padding:0 6px;font-size:9px;font-weight:700;margin-left:6px}
+      .viab-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+      .viab-chart-title{font-size:11px;color:${VIAB_COLORS.textDim};font-weight:600;margin:0 0 8px}
+      .viab-chart-box{height:220px}
+      .viab-legend{display:flex;gap:14px;margin-top:6px;font-size:11px}
+      .viab-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid ${VIAB_COLORS.grayB}}
+      .viab-summary-item{text-align:center}
+      .viab-summary-label{font-size:9px;color:${VIAB_COLORS.textDim};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+      .viab-summary-value{font-size:14px;font-weight:800;color:${VIAB_COLORS.dark}}
+      .viab-indicator-group{margin-bottom:16px}
+      .viab-indicator-group-title{font-size:11px;font-weight:700;color:${VIAB_COLORS.textDim};text-transform:uppercase;letter-spacing:.08em;margin:0 0 10px}
+      .viab-indicator-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+      .viab-indicator-card{background:${VIAB_COLORS.grayL};border:1px solid ${VIAB_COLORS.grayB};border-radius:8px;padding:11px 13px}
+      .viab-indicator-label{font-size:9px;color:${VIAB_COLORS.textDim};margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+      .viab-indicator-value{font-size:19px;font-weight:800;margin-bottom:5px}
+      .viab-indicator-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;font-size:9px;color:${VIAB_COLORS.textDim}}
+      .viab-indicator-badge{display:inline-block;font-size:8px;padding:1px 6px;border-radius:999px;border:1px solid;font-weight:700}
+      .viab-indicator-note{font-size:9px;color:${VIAB_COLORS.textDim};line-height:1.4}
+      .viab-indicator-meter{height:4px;background:${VIAB_COLORS.grayB};border-radius:2px;margin-bottom:5px}
+      .viab-indicator-meter-fill{height:100%;border-radius:2px;background:${VIAB_COLORS.dark};opacity:.75}
+      .viab-indicator-meter-fill.is-warn{background:${VIAB_COLORS.orange}}
+      .viab-waterfall-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+      .viab-waterfall-card{border:1px solid ${VIAB_COLORS.grayB};border-radius:8px;padding:12px 14px;position:relative}
+      .viab-waterfall-arrow{position:absolute;left:-9px;top:50%;transform:translateY(-50%);font-size:16px;font-weight:700;color:${VIAB_COLORS.textDim}}
+      .viab-client-card{border:1px solid ${VIAB_COLORS.grayB};border-left:3px solid ${VIAB_COLORS.orange};border-radius:8px;padding:11px 14px;background:#fff;margin-bottom:8px}
+      .viab-client-card.is-muted{opacity:.86}
+      .viab-client-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+      .viab-client-quarter{font-size:12px;font-weight:700;color:${VIAB_COLORS.dark}}
+      .viab-tier-badge{display:inline-block;background:${VIAB_COLORS.light};color:${VIAB_COLORS.dark};border:1px solid ${VIAB_COLORS.lightB};border-radius:999px;padding:1px 7px;font-size:10px;font-weight:600;margin-left:7px}
+      .viab-risk-badge{display:inline-block;border-radius:999px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px;border:1px solid}
+      .viab-risk-critico{color:${VIAB_COLORS.red};background:${VIAB_COLORS.red}18;border-color:${VIAB_COLORS.red}44}
+      .viab-risk-alto{color:${VIAB_COLORS.orange};background:${VIAB_COLORS.orange}18;border-color:${VIAB_COLORS.orange}44}
+      .viab-risk-moderado{color:${VIAB_COLORS.yellow};background:${VIAB_COLORS.yellow}18;border-color:${VIAB_COLORS.yellow}44}
+      .viab-client-meta{font-size:11px;color:${VIAB_COLORS.textDim};margin-top:4px}
+      .viab-client-foot{display:flex;justify-content:space-between;align-items:center;margin-top:5px;font-size:11px;color:${VIAB_COLORS.textDim}}
+      .viab-total-row{display:flex;justify-content:space-between;padding:8px 12px;background:${VIAB_COLORS.grayL};border-radius:6px;margin:2px 0 14px;font-size:12px}
+      .viab-total-row strong{font-size:13px;color:${VIAB_COLORS.dark}}
+      .viab-total-row.is-accent{background:${VIAB_COLORS.light};margin-top:6px}
+      .viab-progress-row{margin-bottom:9px}
+      .viab-progress-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;font-size:11px}
+      .viab-progress-head .is-warn{color:${VIAB_COLORS.orange};font-weight:700}
+      .viab-progress-head small{color:${VIAB_COLORS.textDim};font-weight:400;font-size:10px}
+      .viab-progress-track{height:4px;background:${VIAB_COLORS.grayB};border-radius:2px}
+      .viab-progress-fill{height:100%;background:${VIAB_COLORS.dark};border-radius:2px}
+      .viab-progress-fill.is-warn{background:${VIAB_COLORS.orange}}
+      .viab-mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
+      .viab-mini-card{background:${VIAB_COLORS.light};border-radius:7px;padding:9px 12px}
+      .viab-mini-label{font-size:10px;color:${VIAB_COLORS.textDim};margin-bottom:3px}
+      .viab-mini-value{font-size:17px;font-weight:800;color:${VIAB_COLORS.dark}}
+      .viab-warn{margin-top:8px;padding:7px 10px;background:#fff3e0;border-radius:6px;border:1px solid ${VIAB_COLORS.orange}44;font-size:11px;color:#7c3c00}
+      .viab-positive{color:${VIAB_COLORS.mid}!important;font-weight:600}
+      .viab-strong{color:${VIAB_COLORS.dark}!important;font-weight:700}
+      .viab-scenario-card{border:1px solid ${VIAB_COLORS.grayB};border-top:3px solid ${VIAB_COLORS.dark};border-radius:8px;padding:14px 16px}
+      .viab-scenario-name{font-weight:700;font-size:13px;margin-bottom:10px}
+      .viab-scenario-kv{display:flex;justify-content:space-between;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid ${VIAB_COLORS.grayB};font-size:11px;color:${VIAB_COLORS.textDim}}
+      .viab-scenario-kv:last-of-type{border-bottom:0;margin-bottom:0}
+      .viab-scenario-kv strong{font-size:12px}
+      .viab-scenario-desc{font-size:10px;color:${VIAB_COLORS.textDim};margin:6px 0 0;font-style:italic}
+      .viab-footer{border-top:1px solid ${VIAB_COLORS.grayB};padding-top:14px;display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:11px;color:${VIAB_COLORS.textDim};flex-wrap:wrap}
+      @media (max-width:1200px){
+        .viab-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .viab-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .viab-kpi-card.kpi-recuperacion{grid-column:1 / -1}
+        .viab-indicator-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+        .viab-waterfall-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      }
+      @media (max-width:900px){
+        .viab-kpi-grid{grid-template-columns:1fr}
+        .viab-three-col,.viab-chart-row,.viab-two-col,.viab-indicator-grid,.viab-waterfall-grid{grid-template-columns:1fr}
+        .viab-waterfall-arrow{display:none}
+      }
+      @media (max-width:720px){
+        .viab-banner-grid{grid-template-columns:1fr}
+      }
+    </style>
+  `;
+}
+
+function renderViabilidadTab() {
+  const container = document.getElementById("viabilidadContainer");
+  if (!container) return;
+  const scenario = ["Base", "Conservador", "Optimista"].includes(state.viabilidadScenario)
+    ? state.viabilidadScenario
+    : "Base";
+  const data = getViabilidadScenarioData();
+  const scenarioButtons = viabScenarioButtonsHtml(scenario);
+
+  container.innerHTML = `
+    ${viabBuildStyles()}
+    <div class="viab-root">
+      <section class="viab-banner">
+        <h2 class="viab-banner-title">Viabilidad Financiera</h2>
+        <div class="viab-banner-grid kpi-cards-wrapper">
+          <div class="viab-banner-card"><div class="viab-banner-label">Inversión Año 1</div><div class="viab-banner-value">$76,960 USD</div><div class="viab-banner-sub">6 rubros</div></div>
+          <div class="viab-banner-card"><div class="viab-banner-label">Revenue Año 1</div><div class="viab-banner-value">$98,515 USD</div><div class="viab-banner-sub">5 clientes · 3,069 viajes</div></div>
+          <div class="viab-banner-card"><div class="viab-banner-label">Revenue Año 2</div><div class="viab-banner-value">$224,919 USD</div><div class="viab-banner-sub">Renovaciones + 5 nuevos</div></div>
+          <div class="viab-banner-card"><div class="viab-banner-label">Payback estimado</div><div class="viab-banner-value">~9 meses</div><div class="viab-banner-sub">FCF acumulado > 0</div></div>
+        </div>
+      </section>
+
+      <section class="viab-section">
+        <div class="viab-kpi-grid kpi-cards-wrapper" style="margin-bottom:0">
+          <article class="viab-kpi-card"><h4 class="viab-kpi-title">COGS por viaje <span class="viab-unit">USD</span></h4><div class="viab-kpi-value">$5.17</div><div class="viab-kpi-sub">vs spot $27.50</div></article>
+          <article class="viab-kpi-card"><h4 class="viab-kpi-title">Precio prom. ponderado <span class="viab-unit">USD/viaje</span></h4><div class="viab-kpi-value">$31.22</div><div class="viab-kpi-sub">Año 2 · 7,203 viajes</div></article>
+          <article class="viab-kpi-card is-accent"><h4 class="viab-kpi-title">Margen bruto / viaje <span class="viab-unit">%</span></h4><div class="viab-kpi-value">~83%</div><div class="viab-kpi-sub">Antes de OPEX</div></article>
+          <article class="viab-kpi-card"><h4 class="viab-kpi-title">Sensores Año 2 <span class="viab-unit">unidades</span></h4><div class="viab-kpi-value">601 u.</div><div class="viab-kpi-sub">256 Y1 + 345 Y2</div></article>
+          <article class="viab-kpi-card is-accent kpi-recuperacion"><h4 class="viab-kpi-title">Recuperación fiscal <span class="viab-unit">LISR</span></h4><div class="viab-kpi-value">51–65%</div><div class="viab-kpi-sub">Art.189 + Art.25</div></article>
+        </div>
+      </section>
+
+      ${viabRenderIndicadoresSection()}
+
+      <section class="viab-section">
+        <h3 class="viab-section-title">Desglose de membresías — Tiers de precio por volumen</h3>
+        <div class="viab-two-col">
+          <div>
+            <div class="viab-chart-title">Estructura de tiers <span class="viab-unit">USD / viaje</span></div>
+            <div class="viab-table-wrap">
+              <table class="viab-table">
+                <thead>
+                  <tr><th>Tier</th><th>Rango DUA/mes</th><th>Precio/viaje</th><th>COGS/viaje</th><th>Margen bruto</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td style="font-weight:700;color:${VIAB_COLORS.textDim}">Sin Tier</td><td>1–49 DUA/mes</td><td style="font-weight:700;color:${VIAB_COLORS.textDim}">$35</td><td>$5.17</td><td class="viab-positive">85.2%</td></tr>
+                  <tr><td style="font-weight:700;color:${VIAB_COLORS.mid}">Explorador</td><td>50–149 DUA/mes</td><td style="font-weight:700;color:${VIAB_COLORS.mid}">$32</td><td>$5.17</td><td class="viab-positive">83.8%</td></tr>
+                  <tr><td style="font-weight:700;color:${VIAB_COLORS.mid}">Socio</td><td>150–299 DUA/mes</td><td style="font-weight:700;color:${VIAB_COLORS.mid}">$30</td><td>$5.17</td><td class="viab-positive">82.8%</td></tr>
+                  <tr><td style="font-weight:700;color:${VIAB_COLORS.dark}">Estrategico</td><td>300–499 DUA/mes</td><td style="font-weight:700;color:${VIAB_COLORS.dark}">$28</td><td>$5.17</td><td class="viab-positive">81.5%</td></tr>
+                  <tr><td style="font-weight:700;color:${VIAB_COLORS.dark}">Ancla</td><td>500+ DUA/mes</td><td style="font-weight:700;color:${VIAB_COLORS.dark}">$25</td><td>$5.17</td><td class="viab-positive">79.3%</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="viab-note">Try-out: 1–3 meses renovable · $33–$35/viaje · Sin compromiso de volumen · Cláusula comodato $150/sensor perdido</p>
+          </div>
+          <div>
+            <div class="viab-chart-title">Revenue por cliente Año 1 — tier asignado</div>
+            ${viabRenderMembershipBars()}
+            <div style="border-top:1px solid ${VIAB_COLORS.grayB};padding-top:8px;margin-top:4px;display:flex;justify-content:space-between;font-size:12px"><span style="color:${VIAB_COLORS.textDim}">Precio ponderado Año 1</span><strong style="color:${VIAB_COLORS.dark}">$32.10 / viaje</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:4px"><span style="color:${VIAB_COLORS.textDim}">Precio ponderado Año 2</span><strong style="color:${VIAB_COLORS.dark}">$31.22 / viaje</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="viab-section">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+          <h3 class="viab-section-title" style="margin:0">Revenue · EBITDA · FCF Acumulado <span class="viab-unit">USD</span></h3>
+          <div class="viab-scenario-controls">${scenarioButtons}</div>
+        </div>
+        <div class="viab-chart-row">
+          <div>
+            <p class="viab-chart-title">Revenue y EBITDA — proyección 10 años</p>
+            <div id="viabChartRevenue" class="viab-chart-box"></div>
+            <div class="viab-legend">
+              <span style="color:${VIAB_COLORS.dark};font-weight:600">— Revenue</span>
+              <span style="color:${VIAB_COLORS.mid};font-weight:600">— EBITDA</span>
+              <span style="color:${VIAB_COLORS.dark};font-weight:600">--- Util. Neta</span>
+            </div>
+          </div>
+          <div>
+            <p class="viab-chart-title">FCF Acumulado post-inversión — 3 escenarios</p>
+            <div id="viabChartFcf" class="viab-chart-box"></div>
+            <div class="viab-legend">
+              <span style="color:${VIAB_COLORS.dark};font-weight:600">— Base ($958K)</span>
+              <span style="color:${VIAB_COLORS.orange};font-weight:600">--- Cons. ($430K)</span>
+              <span style="color:${VIAB_COLORS.mid};font-weight:600">--- Opt. ($1.5M)</span>
+            </div>
+          </div>
+        </div>
+        <div class="viab-summary-grid">
+          <div class="viab-summary-item"><div class="viab-summary-label">Revenue Año 1</div><div class="viab-summary-value">$98,515</div></div>
+          <div class="viab-summary-item"><div class="viab-summary-label">Revenue Año 2</div><div class="viab-summary-value">$224,919</div></div>
+          <div class="viab-summary-item"><div class="viab-summary-label">EBITDA Año 2</div><div class="viab-summary-value">$132,681</div></div>
+          <div class="viab-summary-item"><div class="viab-summary-label">Margen EBITDA</div><div class="viab-summary-value">59.0%</div></div>
+          <div class="viab-summary-item"><div class="viab-summary-label">FCF Base Año 10</div><div class="viab-summary-value">$958K acum</div></div>
+        </div>
+      </section>
+
+      <section class="viab-two-col" style="margin-bottom:0">
+        <article class="viab-section" style="margin:0">
+          <h3 class="viab-section-title">Crédito NAFIN Eco Crédito <span class="viab-unit">Revolvente</span></h3>
+          <div class="viab-mini-grid">
+            <div class="viab-mini-card"><div class="viab-mini-label">Línea total</div><div class="viab-mini-value">$76,960</div></div>
+            <div class="viab-mini-card"><div class="viab-mini-label">Tasa anual fija</div><div class="viab-mini-value">16.0%</div></div>
+            <div class="viab-mini-card"><div class="viab-mini-label">Plazo</div><div class="viab-mini-value">36 meses</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:${VIAB_COLORS.dark};margin-bottom:8px">Tramos de disposición</div>
+          ${viabRenderDrawdownBars()}
+          <div style="font-size:12px;font-weight:700;color:${VIAB_COLORS.dark};margin:12px 0 8px">Saldo deudor — primer año</div>
+          <div id="viabChartAmort" style="height:110px"></div>
+        </article>
+        <article class="viab-section" style="margin:0">
+          <h3 class="viab-section-title">Desglose de inversión Año 1 <span class="viab-unit">$76,960 USD</span></h3>
+          ${viabRenderInvestmentBars()}
+          <p class="viab-warn">⚑ Legal & Fiscal incluye resolución SAT Art.189 ($10K) — requerida antes del pitch a CFOs</p>
+        </article>
+      </section>
+
+      <section class="viab-section">
+        <h3 class="viab-section-title">Beneficios fiscales por cliente <span class="viab-unit">LISR Art. 189 + Art. 25</span></h3>
+        <div class="viab-two-col">
+          <div>
+            <div style="background:${VIAB_COLORS.light};border-radius:8px;padding:12px 14px;margin-bottom:14px;border-left:3px solid ${VIAB_COLORS.dark}">
+              <div style="font-weight:700;color:${VIAB_COLORS.dark};margin-bottom:6px;font-size:13px">Mecánica de recuperación fiscal</div>
+              <div style="font-size:12px;color:${VIAB_COLORS.textMid};line-height:1.7">
+                <strong>Art. 189 LISR:</strong> Crédito directo → 30% del costo descuenta peso a peso del ISR<br/>
+                <strong>Art. 25 LISR:</strong> 70% del gasto deducible × 30% ISR = 21% adicional<br/>
+                <strong style="color:${VIAB_COLORS.dark}">Recuperación estándar: 51% · Clientes IMMEX: hasta 65%</strong>
+              </div>
+            </div>
+            <div id="viabChartFiscal" style="height:160px"></div>
+            <div class="viab-legend"><span style="color:${VIAB_COLORS.dark};font-weight:600">■ Art.189 (30%)</span><span style="color:${VIAB_COLORS.mid};font-weight:600">■ Art.25 (21%)</span><span style="color:${VIAB_COLORS.textDim}">= 51% recuperación</span></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:${VIAB_COLORS.dark};margin-bottom:8px">Costo neto vs mercado spot ($27.50/viaje)</div>
+            <div class="viab-table-wrap">
+              <table class="viab-table">
+                <thead><tr><th>Cliente</th><th>Membresía</th><th>Recup. 51%</th><th>Costo neto</th><th>Ahorro anual</th></tr></thead>
+                <tbody>${viabRenderCostoNetoRows()}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="viab-section">
+        <h3 class="viab-section-title">Análisis de escenarios — Métricas clave Año 10 (2035)</h3>
+        <div class="viab-three-col" style="margin-bottom:16px">${viabRenderScenariosCards()}</div>
+        <div id="viabChartScenario" style="height:130px"></div>
+      </section>
+
+      <footer class="viab-footer">
+        <span>© CL Circular · Modelo financiero México 2026–2035 · Uso interno</span>
+        <span>COGS $5.17/viaje · NAFIN 16% · ISR 30% · Renovación sensores Y4 y Y8 · Pérdida 5%/año</span>
+      </footer>
+    </div>
+  `;
+
+  container.querySelectorAll(".viab-scenario-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const next = btn.getAttribute("data-viab-scenario");
+      if (!next || next === state.viabilidadScenario) return;
+      state.viabilidadScenario = next;
+      renderViabilidadTab();
+      requestAnimationFrame(() => resizeAllCharts());
+    });
+  });
+
+  renderViabilidadCharts(data);
+}
+
+function renderViabilidadCharts(data) {
+  if (typeof Plotly === "undefined") {
+    ["viabChartRevenue", "viabChartFcf", "viabChartAmort", "viabChartFiscal", "viabChartScenario"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = `<p style="font-size:12px;color:${VIAB_COLORS.textDim};margin:0">No se pudo cargar Plotly.</p>`;
+    });
+    return;
+  }
+
+  const years = data.map((d) => d.yr);
+  Plotly.react(
+    "viabChartRevenue",
+    [
+      {
+        x: years,
+        y: data.map((d) => d.rev),
+        type: "scatter",
+        mode: "lines",
+        name: "Revenue",
+        line: { color: VIAB_COLORS.dark, width: 2.5 },
+        fill: "tozeroy",
+        fillcolor: "rgba(26,107,58,0.14)",
+      },
+      {
+        x: years,
+        y: data.map((d) => d.ebitda),
+        type: "scatter",
+        mode: "lines",
+        name: "EBITDA",
+        line: { color: VIAB_COLORS.mid, width: 2 },
+        fill: "tozeroy",
+        fillcolor: "rgba(46,143,79,0.10)",
+      },
+      {
+        x: years,
+        y: data.map((d) => d.ni),
+        type: "scatter",
+        mode: "lines",
+        name: "Util. Neta",
+        line: { color: VIAB_COLORS.dark, width: 1.5, dash: "dash" },
+      },
+    ],
+    {
+      margin: { t: 6, r: 8, b: 30, l: 42 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      showlegend: false,
+      xaxis: { tickfont: { size: 9, color: VIAB_COLORS.textDim }, showgrid: false, zeroline: false },
+      yaxis: { tickfont: { size: 9, color: VIAB_COLORS.textDim }, gridcolor: VIAB_COLORS.grayB, tickprefix: "$", tickformat: "~s", zeroline: false },
+    },
+    { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] },
+  );
+
+  Plotly.react(
+    "viabChartFcf",
+    [
+      {
+        x: VIAB_CUM_CHART.map((d) => d.yr),
+        y: VIAB_CUM_CHART.map((d) => d.Base),
+        type: "scatter",
+        mode: "lines+markers",
+        name: "Base",
+        line: { color: VIAB_COLORS.dark, width: 2.5 },
+        marker: { size: 6 },
+      },
+      {
+        x: VIAB_CUM_CHART.map((d) => d.yr),
+        y: VIAB_CUM_CHART.map((d) => d.Conservador),
+        type: "scatter",
+        mode: "lines",
+        name: "Conservador",
+        line: { color: VIAB_COLORS.orange, width: 1.6, dash: "dash" },
+      },
+      {
+        x: VIAB_CUM_CHART.map((d) => d.yr),
+        y: VIAB_CUM_CHART.map((d) => d.Optimista),
+        type: "scatter",
+        mode: "lines",
+        name: "Optimista",
+        line: { color: VIAB_COLORS.mid, width: 1.6, dash: "dash" },
+      },
+    ],
+    {
+      margin: { t: 6, r: 8, b: 30, l: 42 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      showlegend: false,
+      xaxis: { tickfont: { size: 9, color: VIAB_COLORS.textDim }, showgrid: false, zeroline: false },
+      yaxis: { tickfont: { size: 9, color: VIAB_COLORS.textDim }, gridcolor: VIAB_COLORS.grayB, ticksuffix: "K", zeroline: false },
+      shapes: [
+        {
+          type: "line",
+          x0: 0,
+          x1: 1,
+          xref: "paper",
+          y0: 0,
+          y1: 0,
+          yref: "y",
+          line: { color: VIAB_COLORS.grayB, dash: "dot", width: 1.3 },
+        },
+      ],
+      annotations: [
+        {
+          text: "Break-even",
+          xref: "paper",
+          x: 0.02,
+          y: 0,
+          yref: "y",
+          showarrow: false,
+          font: { size: 9, color: VIAB_COLORS.dark },
+          yshift: 10,
+        },
+      ],
+    },
+    { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] },
+  );
+
+  Plotly.react(
+    "viabChartAmort",
+    [
+      {
+        x: VIAB_AMORT.map((d) => d.mes),
+        y: VIAB_AMORT.map((d) => d.capital),
+        type: "bar",
+        name: "Capital",
+        marker: { color: VIAB_COLORS.dark, opacity: 0.86 },
+      },
+      {
+        x: VIAB_AMORT.map((d) => d.mes),
+        y: VIAB_AMORT.map((d) => d.interes),
+        type: "bar",
+        name: "Interés",
+        marker: { color: VIAB_COLORS.orange, opacity: 0.72 },
+      },
+    ],
+    {
+      barmode: "stack",
+      margin: { t: 4, r: 6, b: 20, l: 36 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      showlegend: false,
+      xaxis: { tickfont: { size: 8, color: VIAB_COLORS.textDim }, showgrid: false, zeroline: false },
+      yaxis: { tickfont: { size: 8, color: VIAB_COLORS.textDim }, ticksuffix: "K", tickformat: "~s", gridcolor: VIAB_COLORS.grayB, zeroline: false },
+    },
+    { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] },
+  );
+
+  Plotly.react(
+    "viabChartFiscal",
+    [
+      {
+        y: VIAB_FISCAL.map((d) => d.name),
+        x: VIAB_FISCAL.map((d) => d.art189),
+        type: "bar",
+        orientation: "h",
+        name: "Art.189 (30%)",
+        marker: { color: VIAB_COLORS.dark, opacity: 0.86 },
+      },
+      {
+        y: VIAB_FISCAL.map((d) => d.name),
+        x: VIAB_FISCAL.map((d) => d.art25),
+        type: "bar",
+        orientation: "h",
+        name: "Art.25 (21%)",
+        marker: { color: VIAB_COLORS.mid, opacity: 0.72 },
+      },
+    ],
+    {
+      barmode: "stack",
+      margin: { t: 2, r: 8, b: 20, l: 50 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      showlegend: false,
+      xaxis: { tickfont: { size: 8, color: VIAB_COLORS.textDim }, ticksuffix: "K", tickformat: "~s", gridcolor: VIAB_COLORS.grayB, zeroline: false },
+      yaxis: { tickfont: { size: 9, color: VIAB_COLORS.textMid }, showgrid: false, zeroline: false },
+    },
+    { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] },
+  );
+
+  Plotly.react(
+    "viabChartScenario",
+    [
+      {
+        x: ["Revenue Y10", "EBITDA Y10", "Util.Neta Y10", "FCF Acum."],
+        y: [285, 175, 73, 958],
+        type: "bar",
+        name: "Base",
+        marker: { color: VIAB_COLORS.dark, opacity: 0.85 },
+      },
+      {
+        x: ["Revenue Y10", "EBITDA Y10", "Util.Neta Y10", "FCF Acum."],
+        y: [198, 96, 38, 430],
+        type: "bar",
+        name: "Conservador",
+        marker: { color: VIAB_COLORS.orange, opacity: 0.72 },
+      },
+      {
+        x: ["Revenue Y10", "EBITDA Y10", "Util.Neta Y10", "FCF Acum."],
+        y: [398, 219, 95, 1500],
+        type: "bar",
+        name: "Optimista",
+        marker: { color: VIAB_COLORS.mid, opacity: 0.72 },
+      },
+    ],
+    {
+      barmode: "group",
+      margin: { t: 4, r: 8, b: 24, l: 42 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      showlegend: false,
+      xaxis: { tickfont: { size: 9, color: VIAB_COLORS.textDim }, showgrid: false, zeroline: false },
+      yaxis: { tickfont: { size: 8, color: VIAB_COLORS.textDim }, ticksuffix: "K", gridcolor: VIAB_COLORS.grayB, zeroline: false },
+    },
+    { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["select2d", "lasso2d"] },
+  );
 }
 
 function initPropuestaCoverageMap() {
@@ -6208,6 +7436,30 @@ function syncPropuestaProspectsLocations() {
       }
     }
   });
+
+  const getCardNameKey = (card) => normalizeCompanyKey(card?.querySelector(".propuesta-prospect-head strong")?.textContent || "");
+  const sortCardsByOrder = (listEl, orderedKeys = []) => {
+    if (!listEl || !orderedKeys.length) return;
+    const indexByKey = new Map(orderedKeys.map((key, idx) => [normalizeCompanyKey(key), idx]));
+    const items = Array.from(listEl.querySelectorAll(".propuesta-prospect-card"));
+    items
+      .sort((a, b) => {
+        const aKey = getCardNameKey(a);
+        const bKey = getCardNameKey(b);
+        const ai = indexByKey.has(aKey) ? indexByKey.get(aKey) : Number.MAX_SAFE_INTEGER;
+        const bi = indexByKey.has(bKey) ? indexByKey.get(bKey) : Number.MAX_SAFE_INTEGER;
+        if (ai !== bi) return ai - bi;
+        return aKey.localeCompare(bKey);
+      })
+      .forEach((card) => listEl.appendChild(card));
+  };
+
+  // Orden visual solicitado:
+  // 1) Baja Aqua-Farms centrada sola (Ancla)
+  // 2) Pinsa + GAM en la misma fila
+  // 3) Pacífico + Baja Shellfish en la fila de abajo
+  sortCardsByOrder(anclaList, ["Baja Aqua-Farms"]);
+  sortCardsByOrder(estrategicoList, ["Grupo Pinsa", "GAM", "Pacífico Aquaculture", "Baja Shellfish Farms"]);
 
   // Si una lista queda con un solo prospecto (ej. Ancla), hacerla full-width y centrada.
   [anclaList, estrategicoList].forEach((listEl) => {
@@ -6422,6 +7674,14 @@ function bindPropuestaViabilidadButton() {
   button.onclick = () => {
     const viabilidadTabBtn = document.querySelector('.tab-button[data-tab="viabilidad"]');
     if (viabilidadTabBtn) viabilidadTabBtn.click();
+    setTimeout(() => {
+      const shell = document.querySelector(".app-shell");
+      if (shell && typeof shell.scrollIntoView === "function") {
+        shell.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 0);
   };
 }
 
@@ -7653,6 +8913,15 @@ function renderAll() {
   } catch (error) {
     console.error("renderPropuestaTab error:", error);
   }
+  try {
+    renderViabilidadTab();
+  } catch (error) {
+    console.error("renderViabilidadTab error:", error);
+  }
+}
+
+function formatKpiTextWithBoldNumbers(value) {
+  return escapeHtml(String(value ?? ""));
 }
 
 function renderKpiCardsEmergencyFallback() {
@@ -7683,8 +8952,10 @@ function renderKpiCardsEmergencyFallback() {
   const yoyProd = prodPrev > 0 ? ((prodSelected - prodPrev) / prodPrev) * 100 : null;
   const yoyVal = valPrevUsd > 0 ? ((valSelectedUsd - valPrevUsd) / valPrevUsd) * 100 : null;
   const viajesRounded = 10500;
-  const fobSelected = getFobValueByYear(selectedYear);
-  const fobPrev = getFobValueByYear(prevYear);
+  const fobYear = 2025;
+  const fobPrevYear = 2024;
+  const fobSelected = getFobValueByYear(fobYear);
+  const fobPrev = getFobValueByYear(fobPrevYear);
   const fobTrendPct =
     Number.isFinite(fobSelected) && Number.isFinite(fobPrev) && fobPrev > 0
       ? ((fobSelected - fobPrev) / fobPrev) * 100
@@ -7693,24 +8964,13 @@ function renderKpiCardsEmergencyFallback() {
 
   cards.innerHTML = [
     {
-      title: `FOB ${selectedYear} (pescados y mariscos)`,
+      title: `FOB ${fobYear} (pescados y mariscos)`,
       value: Number.isFinite(fobSelected) ? formatUsdMillionsExecutive(fobSelected) : "No disponible",
       subvalue:
-        fobTrendPct === null ? "Sin tendencia disponible" : `${fobTrendArrow} ${formatPercentExecutive(fobTrendPct)} vs ${prevYear}`,
+        fobTrendPct === null ? "Sin tendencia disponible" : `${fobTrendArrow} ${formatPercentExecutive(fobTrendPct)} vs ${fobPrevYear}`,
       unit: "USD",
       source: "Fuente: Euromonitor Passport",
-    },
-    {
-      title: "Viajes anuales estimados hacia EE.UU.",
-      value: Number.isFinite(viajesRounded) ? formatNumber(viajesRounded, "viajes/año") : "No disponible",
-      unit: "viajes/año",
-      source: `Base: CONAPESCA 2024 (Nacional) x % exportación por especie x ${FTL_TON_POR_CAMION} ton/viaje`,
-    },
-    {
-      title: `Variación YoY ${selectedYear} vs ${prevYear}`,
-      value: `Volumen: ${formatPercentExecutive(yoyProd)} | Valor: ${formatPercentExecutive(yoyVal)}`,
-      unit: "%",
-      source: "Fuente: CONAPESCA",
+      accent: true,
     },
     {
       title: `Producción Total Nacional ${selectedYear}`,
@@ -7719,21 +8979,28 @@ function renderKpiCardsEmergencyFallback() {
       source: "Fuente: CONAPESCA",
     },
     {
-      title: `Valor Económico Total ${selectedYear}`,
-      value: formatUsdMillionsExecutive(valSelectedUsd),
-      unit: "USD",
+      title: `Variación YoY ${selectedYear} vs ${prevYear}`,
+      value: `Volumen: ${formatPercentExecutive(yoyProd)} | Valor: ${formatPercentExecutive(yoyVal)}`,
+      unit: "%",
       source: "Fuente: CONAPESCA",
+    },
+    {
+      title: "Viajes anuales estimados a EE.UU.",
+      value: Number.isFinite(viajesRounded) ? formatNumber(viajesRounded, "viajes/año") : "No disponible",
+      unit: "viajes/año",
+      source: `Base: CONAPESCA 2024 (Nacional) x % exportación por especie x ${FTL_TON_POR_CAMION} ton/viaje`,
+      accent: true,
     },
   ]
     .map(
       (item) => `
-      <article class="kpi-card">
+      <article class="kpi-card${item.accent ? " kpi-card-accent" : ""}">
         <div class="kpi-head">
           <h4>${item.title}</h4>
           <span class="kpi-unit">${item.unit}</span>
         </div>
-        <div class="value">${item.value}</div>
-        ${item.subvalue ? `<div class="kpi-subvalue">${item.subvalue}</div>` : ""}
+        <div class="value">${formatKpiTextWithBoldNumbers(item.value)}</div>
+        ${item.subvalue ? `<div class="kpi-subvalue">${formatKpiTextWithBoldNumbers(item.subvalue)}</div>` : ""}
         <div class="kpi-source">${item.source}</div>
       </article>
     `,
@@ -7822,33 +9089,24 @@ function renderKpiCards() {
   const yoyValor = valorPrevUsd > 0 ? ((valorTotalUsd - valorPrevUsd) / valorPrevUsd) * 100 : null;
   const viajesRounded = 10500;
   const prevYear = selectedYear - 1;
-  const fob2024 = getFobValueByYear(selectedYear);
-  const fob2023 = getFobValueByYear(prevYear);
+  const fobYear = 2025;
+  const fobPrevYear = 2024;
+  const fobCurrent = getFobValueByYear(fobYear);
+  const fobPrev = getFobValueByYear(fobPrevYear);
   const fobTrendPct =
-    Number.isFinite(fob2024) && Number.isFinite(fob2023) && fob2023 > 0
-      ? ((fob2024 - fob2023) / fob2023) * 100
+    Number.isFinite(fobCurrent) && Number.isFinite(fobPrev) && fobPrev > 0
+      ? ((fobCurrent - fobPrev) / fobPrev) * 100
       : null;
   const fobTrendArrow = fobTrendPct === null ? "" : fobTrendPct > 0 ? "↑" : fobTrendPct < 0 ? "↓" : "→";
 
   const kpis = [
     {
-      title: `FOB ${selectedYear} (pescados y mariscos)`,
-      value: Number.isFinite(fob2024) ? formatUsdMillionsExecutive(fob2024) : "No disponible",
-      subvalue: fobTrendPct === null ? "Sin tendencia disponible" : `${fobTrendArrow} ${formatPercentExecutive(fobTrendPct)} vs ${prevYear}`,
+      title: `FOB ${fobYear} (pescados y mariscos)`,
+      value: Number.isFinite(fobCurrent) ? formatUsdMillionsExecutive(fobCurrent) : "No disponible",
+      subvalue: fobTrendPct === null ? "Sin tendencia disponible" : `${fobTrendArrow} ${formatPercentExecutive(fobTrendPct)} vs ${fobPrevYear}`,
       unit: "USD",
       source: "Fuente: Euromonitor Passport",
-    },
-    {
-      title: "Viajes anuales estimados hacia EE.UU.",
-      value: Number.isFinite(viajesRounded) ? formatNumber(viajesRounded, "viajes/año") : "No disponible",
-      unit: "viajes/año",
-      source: `Base: CONAPESCA 2024 (Nacional) x % exportación por especie x ${FTL_TON_POR_CAMION} ton/viaje`,
-    },
-    {
-      title: `Variación YoY ${selectedYear} vs ${selectedYear - 1}`,
-      value: `Volumen: ${formatPercentExecutive(yoyProduccion)} | Valor: ${formatPercentExecutive(yoyValor)}`,
-      unit: "%",
-      source: "Fuente: CONAPESCA",
+      accent: true,
     },
     {
       title: `Producción Total Nacional ${selectedYear}`,
@@ -7857,23 +9115,30 @@ function renderKpiCards() {
       source: "Fuente: CONAPESCA",
     },
     {
-      title: `Valor Económico Total ${selectedYear}`,
-      value: formatUsdMillionsExecutive(valorTotalUsd),
-      unit: "USD",
+      title: `Variación YoY ${selectedYear} vs ${selectedYear - 1}`,
+      value: `Volumen: ${formatPercentExecutive(yoyProduccion)} | Valor: ${formatPercentExecutive(yoyValor)}`,
+      unit: "%",
       source: "Fuente: CONAPESCA",
+    },
+    {
+      title: "Viajes anuales estimados a EE.UU.",
+      value: Number.isFinite(viajesRounded) ? formatNumber(viajesRounded, "viajes/año") : "No disponible",
+      unit: "viajes/año",
+      source: `Base: CONAPESCA 2024 (Nacional) x % exportación por especie x ${FTL_TON_POR_CAMION} ton/viaje`,
+      accent: true,
     },
   ];
 
   cards.innerHTML = kpis
     .map(
       (item) => `
-      <article class="kpi-card">
+      <article class="kpi-card${item.accent ? " kpi-card-accent" : ""}">
         <div class="kpi-head">
           <h4>${item.title}</h4>
           ${item.unit ? `<span class="kpi-unit">${item.unit}</span>` : ""}
         </div>
-        <div class="value">${item.value}</div>
-        ${item.subvalue ? `<div class="kpi-subvalue">${item.subvalue}</div>` : ""}
+        <div class="value">${formatKpiTextWithBoldNumbers(item.value)}</div>
+        ${item.subvalue ? `<div class="kpi-subvalue">${formatKpiTextWithBoldNumbers(item.subvalue)}</div>` : ""}
         ${item.source ? `<div class="kpi-source">${item.source}</div>` : ""}
       </article>
     `,
@@ -8741,13 +10006,7 @@ function buildSerieInsightsHtml({ lastActual, p2026, p2027, dropFromPeakPct }) {
         <strong>${dropFromPeakText}</strong>
       </div>
     </div>
-    <div class="serie-insight-frame">
-      <strong>Lectura del mercado</strong>
-      <p>
-        Cada embarque perdido hoy cuesta proporcionalmente más.
-      </p>
-    </div>
-    <div class="serie-insight-frame">
+    <div class="serie-insight-frame serie-insight-neutral">
       <strong>El catalizador regulatorio</strong>
       <p>
         FSMA 204 vigente desde enero 2026. Documentación de temperatura por viaje es requisito de acceso al mercado
@@ -8876,31 +10135,35 @@ function renderSerieCharts() {
     chartEl,
     traces,
     {
-      margin: { l: 66, r: 24, t: 20, b: 56 },
+      margin: { l: 58, r: 18, t: 14, b: 46 },
       paper_bgcolor: "#ffffff",
       plot_bgcolor: "#ffffff",
       hovermode: "closest",
-      font: { family: "Montserrat, sans-serif", color: "#1f3443", size: 12 },
+      font: { family: "Montserrat, sans-serif", color: "#1f3443", size: 10 },
       legend: {
         orientation: "h",
         x: 0,
-        y: 1.12,
-        font: { size: 11, color: "#4b6475" },
+        y: 1.08,
+        font: { size: 10, color: "#4b6475" },
       },
       xaxis: {
-        title: { text: "Año", font: { family: "Montserrat, sans-serif", size: 12, color: "#355264" } },
+        title: { text: "Año", font: { family: "Montserrat, sans-serif", size: 10, color: "#355264" } },
         range: [xAxisMin, xAxisMax],
         ticklabelstandoff: 8,
         automargin: true,
-        tickfont: { color: "#355264" },
+        tickfont: { color: "#355264", size: 9 },
         showgrid: false,
         zeroline: false,
       },
       yaxis: {
-        title: { text: "USD millones (FOB)", font: { family: "Montserrat, sans-serif", size: 12, color: "#355264" } },
+        title: {
+          text: "USD millones (FOB)",
+          font: { family: "Montserrat, sans-serif", size: 10, color: "#355264" },
+          standoff: 18,
+        },
         ticklabelstandoff: 8,
         automargin: true,
-        tickfont: { color: "#355264" },
+        tickfont: { color: "#355264", size: 9 },
         gridcolor: "rgba(10, 45, 74, 0.10)",
         zeroline: false,
       },
@@ -9077,6 +10340,12 @@ function resizeAllCharts() {
   const seriePlot = document.getElementById("chartSerieFobPlot");
   if (seriePlot && typeof Plotly !== "undefined" && seriePlot.data) {
     Plotly.Plots.resize(seriePlot);
+  }
+  if (typeof Plotly !== "undefined") {
+    ["viabChartRevenue", "viabChartFcf", "viabChartAmort", "viabChartFiscal", "viabChartScenario"].forEach((id) => {
+      const chartEl = document.getElementById(id);
+      if (chartEl && chartEl.data) Plotly.Plots.resize(chartEl);
+    });
   }
 }
 
