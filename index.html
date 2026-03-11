@@ -107,18 +107,18 @@
           <h2 class="propuesta-hero-title">La oportunidad</h2>
           <div class="propuesta-hero-metrics kpi-cards-wrapper">
             <div class="propuesta-hero-metric">
-              <div id="propuestaHeroFobValue" class="propuesta-hero-value">$776M USD</div>
+              <div id="propuestaHeroFobValue" class="propuesta-hero-value">$720M USD</div>
               <div class="propuesta-hero-label">FOB exportado</div>
             </div>
             <div class="propuesta-hero-metric">
-              <div class="propuesta-hero-value">FSMA 2026</div>
-              <div class="propuesta-hero-label">en vigor</div>
+              <div class="propuesta-hero-value">FSMA 204</div>
+              <div class="propuesta-hero-label">trazabilidad térmica como requisito legal</div>
             </div>
           </div>
         </article>
 
         <article class="panel propuesta-section propuesta-prospects">
-          <h3 class="propuesta-section-title">Los 5 prospectos prioritarios- Corredor Pacífico</h3>
+          <h3 class="propuesta-section-title">Estrategia de entrada al corredor Pacífico.</h3>
           <div class="propuesta-prospect-list propuesta-prospect-list-ancla">
             <article class="propuesta-prospect-card propuesta-q2">
               <div class="propuesta-prospect-bar"></div>
@@ -555,16 +555,38 @@
           <div class="panel-title-wrap">
             <div class="cluster-title-row">
               <h3>Segmentación de Prospectos por Perfil Comercial</h3>
-              <button
-                id="clusterPcaToggleBtn"
-                class="competidor-btn cluster-pca-toggle"
-                type="button"
-                aria-pressed="false"
-              >
-                Proyección PCA 2D
-              </button>
+              <div class="cluster-title-actions">
+                <button
+                  id="clusterFeaturesToggleBtn"
+                  class="competidor-btn cluster-features-toggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="clusterFeaturesPanel"
+                >
+                  Ver features
+                </button>
+                <button
+                  id="clusterPcaToggleBtn"
+                  class="competidor-btn cluster-pca-toggle"
+                  type="button"
+                  aria-pressed="false"
+                >
+                  Proyección PCA 2D
+                </button>
+              </div>
             </div>
             <p>K-means k=2 · One-hot encoding · Elbow method · n=5 empresas</p>
+            <div id="clusterFeaturesPanel" class="cluster-features-panel" hidden>
+              <p><strong>Features actuales del clustering (k-means):</strong></p>
+              <ul>
+                <li>ftlMes (en práctica: DUA/mes desde viajesAnuales2026/12 o duaMes)</li>
+                <li>ventasMUsd (ventas estimadas en millones USD)</li>
+                <li>tempScore (criticidad térmica)</li>
+                <li>riesgoLogistico</li>
+                <li>cruceScore (criticidad del cruce/aduana)</li>
+                <li>numCertificaciones</li>
+              </ul>
+            </div>
           </div>
           <div id="clusterScatterPlot" class="serie-plot"></div>
           <div id="clusterPcaPlot" class="serie-plot"></div>

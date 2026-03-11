@@ -2591,9 +2591,42 @@ li {
   flex-wrap: wrap;
 }
 
+.cluster-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.cluster-features-toggle.is-active,
 .cluster-pca-toggle.is-active {
   background: #046f31;
   color: #ffffff;
+}
+
+.cluster-features-panel {
+  margin-top: 0.45rem;
+  border: 1px solid #dce8df;
+  border-radius: 8px;
+  background: #f8fcf9;
+  padding: 0.5rem 0.62rem;
+  color: #2d4b3f;
+}
+
+.cluster-features-panel p {
+  margin: 0 0 0.2rem;
+  font-size: 0.76rem;
+}
+
+.cluster-features-panel ul {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.cluster-features-panel li {
+  margin: 0.08rem 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
 }
 
 #clusterPcaPlot[hidden] {

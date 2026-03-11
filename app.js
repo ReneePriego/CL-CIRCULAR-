@@ -1170,6 +1170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initFooterGlossary();
   initFileUpload();
   initSerieScenarioControls();
+  initClusterFeaturesToggle();
   initClusterPcaToggle();
 
   seedDefaultKpiData();
@@ -5351,6 +5352,33 @@ function initClustering() {
 }
 
 let pcaVisible = false;
+let clusterFeaturesVisible = false;
+
+function setClusterFeaturesVisibility() {
+  const btn = document.getElementById("clusterFeaturesToggleBtn");
+  const panel = document.getElementById("clusterFeaturesPanel");
+  const visible = !!clusterFeaturesVisible;
+  if (btn) {
+    btn.classList.toggle("is-active", visible);
+    btn.setAttribute("aria-expanded", visible ? "true" : "false");
+  }
+  if (panel) panel.hidden = !visible;
+}
+
+function initClusterFeaturesToggle() {
+  const btn = document.getElementById("clusterFeaturesToggleBtn");
+  if (!btn) return;
+  if (btn.dataset.bound === "1") {
+    setClusterFeaturesVisibility();
+    return;
+  }
+  btn.dataset.bound = "1";
+  btn.addEventListener("click", () => {
+    clusterFeaturesVisible = !clusterFeaturesVisible;
+    setClusterFeaturesVisibility();
+  });
+  setClusterFeaturesVisibility();
+}
 
 function setClusterPcaVisibility() {
   const btn = document.getElementById("clusterPcaToggleBtn");
@@ -6321,9 +6349,7 @@ function buildPropuestaProspect(empresa) {
 function renderPropuestaTab() {
   const fobEl = document.getElementById("propuestaHeroFobValue");
   if (fobEl) {
-    const fob2024 = getFobValueByYear(2024);
-    const fobText = Number.isFinite(fob2024) ? `$${Math.floor(fob2024).toLocaleString("es-MX")}M USD` : "$776M USD";
-    fobEl.textContent = fobText;
+    fobEl.textContent = "$720M USD";
   }
   ensurePropuestaValorSection();
   syncPropuestaProspectsLocations();
