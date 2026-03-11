@@ -2496,11 +2496,12 @@ function renderCompetidoresKpi() {
     }
     if (mapEl) mapEl.innerHTML = "";
 
-    if (!competidoresData.length) {
+    const visibleCompetidores = getPanoramaCompetidores(competidoresData);
+    if (!visibleCompetidores.length) {
       grid.innerHTML = '<article class="competidor-card"><div class="competidor-meta">Sin competidores en el CSV.</div></article>';
       return;
     }
-    grid.innerHTML = competidoresData
+    grid.innerHTML = visibleCompetidores
       .map(
         (item, idx) => `
       <article class="competidor-card">
@@ -2564,11 +2565,27 @@ function renderCompetidoresKpi() {
       });
     });
 
-    initCompetidoresMap();
+    initCompetidoresMap(visibleCompetidores);
   } catch (error) {
     console.error("renderCompetidoresKpi fallback:", error);
     renderCompetidoresEmergencyFallback();
   }
+}
+
+const PANORAMA_COMPETIDORES_ORDER = ["SENSORGO", "SYCOD", "SENSITECH", "REDGPS"];
+
+function getPanoramaCompetidores(rows = []) {
+  const mapped = (rows || []).map((item) => ({
+    ...item,
+    __key: normalizeGeoKey(item?.empresa || ""),
+  }));
+  const filtered = mapped.filter((item) => PANORAMA_COMPETIDORES_ORDER.some((needle) => item.__key.includes(needle)));
+  filtered.sort((a, b) => {
+    const ai = PANORAMA_COMPETIDORES_ORDER.findIndex((needle) => a.__key.includes(needle));
+    const bi = PANORAMA_COMPETIDORES_ORDER.findIndex((needle) => b.__key.includes(needle));
+    return ai - bi;
+  });
+  return filtered.map(({ __key, ...item }) => item);
 }
 
 function getCompetidorTipoColor(tipo = "") {
@@ -2611,9 +2628,9 @@ function buildCompetidorColorMap(rows = []) {
   return colorByKey;
 }
 
-function initCompetidoresMap() {
+function initCompetidoresMap(rows = competidoresData) {
   const mapEl = document.getElementById("competidoresMap");
-  if (!mapEl || typeof L === "undefined" || !competidoresData.length) return;
+  if (!mapEl || typeof L === "undefined" || !rows.length) return;
 
   if (state.competidoresMap) {
     state.competidoresMap.remove();
@@ -2627,9 +2644,9 @@ function initCompetidoresMap() {
 
   const bounds = [];
   const coordCount = new Map();
-  const colorByEmpresa = buildCompetidorColorMap(competidoresData);
+  const colorByEmpresa = buildCompetidorColorMap(rows);
 
-  competidoresData.forEach((item, idx) => {
+  rows.forEach((item, idx) => {
     const base = inferCoordsByCompetidor(item);
     const key = `${base.lat.toFixed(3)},${base.lng.toFixed(3)}`;
     const seen = coordCount.get(key) || 0;
@@ -9043,7 +9060,8 @@ function renderCompetidoresEmergencyFallback() {
   const grid = document.getElementById("competidoresGrid");
   const mapEl = document.getElementById("competidoresMap");
   if (!grid) return;
-  const rows = Array.isArray(competidoresData) && competidoresData.length ? competidoresData : [...competidoresFallback];
+  const rowsBase = Array.isArray(competidoresData) && competidoresData.length ? competidoresData : [...competidoresFallback];
+  const rows = getPanoramaCompetidores(rowsBase);
   grid.innerHTML = rows
     .map(
       (item) => `
