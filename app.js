@@ -9047,6 +9047,7 @@ function renderKpiCardsEmergencyFallback() {
       value: formatTonExecutive(prodSelected),
       unit: "ton",
       source: "Fuente: CONAPESCA",
+      extraLine: "Aproximadamente el 65% de los mariscos mexicanos se exportan a Estados Unidos.",
     },
     {
       title: `Variación YoY ${selectedYear} vs ${prevYear}`,
@@ -9071,6 +9072,7 @@ function renderKpiCardsEmergencyFallback() {
         </div>
         <div class="value">${formatKpiTextWithBoldNumbers(item.value)}</div>
         ${item.subvalue ? `<div class="kpi-subvalue">${formatKpiTextWithBoldNumbers(item.subvalue)}</div>` : ""}
+        ${item.extraLine ? `<div class="kpi-subvalue">${formatKpiTextWithBoldNumbers(item.extraLine)}</div>` : ""}
         <div class="kpi-source">${item.source}</div>
       </article>
     `,
@@ -9184,6 +9186,7 @@ function renderKpiCards() {
       value: formatTonExecutive(produccionTotalTon),
       unit: "ton",
       source: "Fuente: CONAPESCA",
+      extraLine: "Aproximadamente el 65% de los mariscos mexicanos se exportan a Estados Unidos.",
     },
     {
       title: `Variación YoY ${selectedYear} vs ${selectedYear - 1}`,
@@ -9210,6 +9213,7 @@ function renderKpiCards() {
         </div>
         <div class="value">${formatKpiTextWithBoldNumbers(item.value)}</div>
         ${item.subvalue ? `<div class="kpi-subvalue">${formatKpiTextWithBoldNumbers(item.subvalue)}</div>` : ""}
+        ${item.extraLine ? `<div class="kpi-subvalue">${formatKpiTextWithBoldNumbers(item.extraLine)}</div>` : ""}
         ${item.source ? `<div class="kpi-source">${item.source}</div>` : ""}
       </article>
     `,
