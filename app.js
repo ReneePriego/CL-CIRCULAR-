@@ -6011,12 +6011,12 @@ function renderClustering() {
       traces,
       {
         title: { text: "", font: { family: "Montserrat, sans-serif", size: 16, color: "#1f3443" } },
-        margin: { l: 56, r: 20, t: 20, b: 56 },
+        margin: { l: 56, r: 20, t: 24, b: 56 },
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
         hovermode: "closest",
         font: { family: "Montserrat, sans-serif", color: "#1f3443", size: 12 },
-        legend: { orientation: "h", x: 0, y: 1.12, font: { size: 11, color: "#4b6475" } },
+        legend: { orientation: "h", x: 0, y: 1, xanchor: "left", yanchor: "top", font: { size: 11, color: "#4b6475" } },
         xaxis: {
           title: "DUA/mes",
           tickfont: { color: "#355264" },
@@ -6229,6 +6229,16 @@ function renderClustering() {
     `,
     )
     .join("");
+
+  if (typeof Plotly !== "undefined") {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        [plotEl, pcaEl, elbowEl].forEach((el) => {
+          if (el && el.data) Plotly.Plots.resize(el);
+        });
+      });
+    });
+  }
 }
 
 function infraRiskLevelToScore(level) {
@@ -10360,7 +10370,16 @@ function resizeAllCharts() {
     Plotly.Plots.resize(seriePlot);
   }
   if (typeof Plotly !== "undefined") {
-    ["viabChartRevenue", "viabChartFcf", "viabChartAmort", "viabChartFiscal", "viabChartScenario"].forEach((id) => {
+    [
+      "viabChartRevenue",
+      "viabChartFcf",
+      "viabChartAmort",
+      "viabChartFiscal",
+      "viabChartScenario",
+      "clusterScatterPlot",
+      "clusterPcaPlot",
+      "clusterElbowPlot",
+    ].forEach((id) => {
       const chartEl = document.getElementById(id);
       if (chartEl && chartEl.data) Plotly.Plots.resize(chartEl);
     });
